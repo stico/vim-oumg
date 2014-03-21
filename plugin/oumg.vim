@@ -10,8 +10,13 @@
 " Copyright (c) Ouyzhu.  Distributed under the same terms as Vim itself.
 " See :help license
 "
-" Developers:
-" Basic usage is as follows:
+" Usage:
+" type "mg" on the text you want to jump
+"
+" Test:
+" ##Lang_Pickling_Unpickling
+" ##Lang_Pickling_Unpickling@@python
+" ##Lang_Pickling_Unpickling@@$MY_FCS/python/A/A_NOTE_python.txt
 
 if exists("g:loaded_oumg") || &cp || v:version < 700
     finish
@@ -24,25 +29,29 @@ let g:loaded_oumg = 1
 function! oumg#mg(count)
     let def_str = expand('<cWORD>')
 
-    " xxx@yyy format
-    let def_list = split(def_str, "@")
+    " xxx@@yyy format: tag in some file
+    let def_list = split(def_str, "@@")
     if(len(def_list) == 2)
-	" works
-        "execute 'edit ' . def_list[1]
-	"execute 'edit +/' . def_list[0] . ' ' . def_list[1] 
-        "execute 'silent edit +/' . def_list[0] . ' ' . def_list[1] 
 
-	" works, but sometimes need press a button
-        "execute 'edit +/^' . def_list[0] . ' ' . def_list[1] 
-
+	" try the converstion of xxx=$MY_FCS/xxx/A_NOTE_xxx.txt
+        let fcs_file = '$MY_FCS/' . def_list[1] . '/A/A_NOTE_' . def_list[1] . '.txt'
+	if(filereadable(expand(fcs_file)))
+            execute 'silent edit +/^' . def_list[0] . ' ' . fcs_file
+            return
+        endif
+        
         execute 'silent edit +/^' . def_list[0] . ' ' . def_list[1] 
-
-	"Not work
-        "execute 'edit ' . def_list[1] . ' +/' . def_list[0]
-	return
+        return
     endif
 
-    " in the end, try gf on it
+    " ##xxx format: tag in current file
+    if match(def_str, "^##.*") >= 0
+        let @/ = '^' . def_str
+	normal n
+        return
+    endif
+
+    " in the end, just try gf on it
     let filename = expand(expand('<cfile>'))
     execute 'edit ' . filename
 endfunction
