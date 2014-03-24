@@ -76,20 +76,13 @@ function! oumg#mg(count)
 	let search_str = def_str
     endif
 
-    " find out file_candidate and add prefix for search_str
-    let file_candidate = oumg#find_candidate(file_path)
-    if len(search_str) == 0
-        let search_str_real = ""
-    else
-        let search_str_real = '+/^' . search_str
-    endif
-
     " perform the jumping
+    let file_candidate = oumg#find_candidate(file_path)
     if(file_candidate == expand("%"))
-        let @/ = search_str_real
+        let @/ = (len(search_str) == 0) ? "" : "^" . search_str
 	normal n 
     elseif(filereadable(file_candidate))
-        execute 'silent edit ' . search_str_real . ' ' . file_candidate
+        execute 'silent edit +/^' . search_str . ' ' . file_candidate
     else
         echo "ERROR: '" . file_candidate . "' NOT exist in any candidate path!"
     endif
