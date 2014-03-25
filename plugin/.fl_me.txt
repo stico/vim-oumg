@@ -1,3 +1,0 @@
-./ougd.vim
-./.fl_me.txt
-./1

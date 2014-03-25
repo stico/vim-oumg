@@ -80,7 +80,7 @@ function! oumg#mg(count)
     let file_candidate = oumg#find_candidate(file_path)
     if(file_candidate == expand("%"))
         let @/ = (len(search_str) == 0) ? "" : "^" . search_str
-	normal n 
+	normal n
     elseif(filereadable(file_candidate))
         execute 'silent edit +/^' . search_str . ' ' . file_candidate
     else
