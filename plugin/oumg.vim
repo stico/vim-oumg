@@ -36,9 +36,16 @@ function! oumg#find_candidate(str)
         return file_candidate
     endif
 
-    " file in root paths
+    " file in root paths 
     for root in ["$MY_DCC/", "$MY_DCO/"]
+        " with conversion $ROOT/xxx/A_NOTE_xxx.txt
         let file_candidate = expand(root . a:str . '/A_NOTE_' . a:str . '.txt')
+        if(filereadable(file_candidate))
+            return file_candidate
+        endif
+
+        " with conversion $ROOT/A_NOTE/xxx.txt
+        let file_candidate = expand(root . '/A_NOTE/' . a:str . '.txt')
         if(filereadable(file_candidate))
             return file_candidate
         endif
