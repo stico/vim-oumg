@@ -13,21 +13,43 @@
 " Usage:
 " type "mg" on the text you want to jump
 "
+" Pattern:
+" TTT / ~TTT		" only Title
+" FFF / @FFF		" only File
+" AAA@YYY / ~AAA@YYY	" Title in File	
+"
 " Test:
 " python
 " python2
-" @@python
-" @@$MY_DCC/python/A_NOTE_python.txt
-" ##Lang_Pickling_Unpickling
-" ##Lang_Pickling_Unpickling@@python
-" ##Lang_Pickling_Unpickling@@python2
-" ##Lang_Pickling_Unpickling@@$MY_DCC/python/A_NOTE_python.txt
-" $MY_DCC/python/A_NOTE_python.txt
+" @python
+" @$MY_DCC/python/python.txt
+" ~Lang_Pickling_Unpickling
+" ~Lang_Pickling_Unpickling@python
+" ~Lang_Pickling_Unpickling2@python2
+" ~Lang_Pickling_Unpickling@$MY_DCC/python/python.txt
+" $MY_DCC/python/python.txt
+"
+" TODO:
+"	auto gen outline?
+"	open source? (make configurable: prefix, finding path, filename pattern, etc)
+"
+"	vim regex how to match non-Ascii: 
+"		/[^\x00-\x7F]		# exclude "ASCII hex character range"
+"		/[^\x00-\xFF]		# exclude "Extened ASCII hex character range"
+"		\w			# Chinese will not match
+"
+"	Highlight
+"		Title		OumnTitle			:syn match OumnTitle /^##.*/
+"		File Ref	OumnLinkFile			# (source external file)
+"		Title Ref	OumnLinkTitle			:syn match OumnLinkTitle /[xxx]/
+"
+"		File Path	note/xxx.txt, xxx/xxx.txt	# xxx.txt seems the simplest, dir name "note" makes it not so obvious to see but still not difficult to goto
+"		Material Loc	<sub folder>
 
-if exists("g:loaded_oumg") || &cp || v:version < 700
-    finish
+if exists("g:loaded_vim_oumg") || &cp || v:version < 700
+	finish
 endif
-let g:loaded_oumg = 1
+let g:loaded_vim_oumg = 1
 
 function! oumg#find_candidate(str)
     " already a file path
@@ -38,8 +60,8 @@ function! oumg#find_candidate(str)
 
     " file in root paths 
     for root in ["$MY_DCC/", "$MY_DCO/"]
-        " with conversion $ROOT/xxx/A_NOTE_xxx.txt
-        let file_candidate = expand(root . a:str . '/A_NOTE_' . a:str . '.txt')
+        " with conversion $ROOT/xxx/xxx.txt
+        let file_candidate = expand(root . a:str . '/' . a:str . '.txt')
         if(filereadable(file_candidate))
             return file_candidate
         endif
@@ -55,48 +77,39 @@ function! oumg#find_candidate(str)
 endfunction
 
 function! oumg#mg(count)
-    " find out file_path and search_str
-    let def_str = expand('<cWORD>')
-    let file_candidate = oumg#find_candidate(def_str)
-    if match(def_str, '^@@.*') >= 0
-        " @@xxx format: just the file name prefixed with @@
-        let def_list = split(def_str, "@@")
-        let file_path = expand(def_list[0])
-	let search_str = ""
-    elseif match(def_str, '@@') >= 0
-        " xxx@@yyy format: tag in the file
-        let def_list = split(def_str, "@@")
-        let file_path = expand(def_list[1])
-	let search_str = def_list[0]
-    elseif match(def_str, '^##.*') >= 0
-        " seems the oumg#find_candidate('##xxx') will return current file
-	" name, why? so we have to treat it this way here
-        let file_path = expand("%")
-	let search_str = def_str
-    elseif filereadable(file_candidate)
-        " xxx format: just the file name
-        let file_path = file_candidate
-	let search_str = ""
-    else
-        " otherwise try it as a search_str
-        let file_path = expand("%")
-	let search_str = def_str
-    endif
+	let def_str = expand('<cWORD>')
+	let def_list = split(def_str, "@")
 
-    " perform the jumping
-    let file_candidate = oumg#find_candidate(file_path)
-    if(file_candidate == expand("%"))
-        let @/ = (len(search_str) == 0) ? "" : "^" . search_str
-	normal n
-    elseif(filereadable(file_candidate))
-        execute 'silent edit +/^' . search_str . ' ' . file_candidate
-    else
-        echo "ERROR: '" . file_candidate . "' NOT exist in any candidate path!"
-    endif
+	" Step 1: find out Title and File
+	if len(def_list) == 2						
+		let title_str = substitute(def_list[0], '^\~', '', '')
+		let file_path = oumg#find_candidate(def_list[1])
+	elseif match(def_str, '^@') >= 0						" only File
+		let title_str = ""
+		let file_path = oumg#find_candidate(substitute(def_str, '^@', '', ''))
+	elseif match(def_str, '^\~') >= 0						" only Title
+		let title_str = substitute(def_list[0], '^\~', '', '')
+		let file_path = expand("%")
+	else										" need further detect
+		let file_candidate = oumg#find_candidate(def_str)
+		if filereadable(file_candidate)						" only File
+			let title_str = ""
+			let file_path = file_candidate
+		else									" only Title
+			let title_str = def_str
+			let file_path = expand("%")
+		endif
+	endif
 
-    "echo "ERROR: Can NOT resolve as (" . def_str . ") or (" . def_list . ")"
-    "let filename = expand(expand('<cfile>'))
-    "execute 'edit ' . filename
+	" Step 2: perform the jumping
+	if file_path == expand("%")
+		let @/ = (len(title_str) == 0) ? "" : "^" . title_str
+		normal n
+	else
+		" TODO: how goto the Title and also highlight it, seems :edit only accept one cmd
+		"execute 'silent edit +let\ @/="' . title_str . '" ' . file_path
+		execute 'silent edit +/^' . title_str . ' ' . file_path
+	endif
 endfunction
 
 nnoremap <silent> mg     :<C-U>call oumg#mg(v:count)<CR>
