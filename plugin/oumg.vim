@@ -105,4 +105,28 @@ function! oumg#mg(count)
 	endif
 endfunction
 
-nnoremap <silent> mg     :<C-U>call oumg#mg(v:count)<CR>
+function! oumg#mo()
+	call setloclist(0, [])
+	let save_cursor = getpos(".")
+
+	call cursor(1, 1)
+	let flags = 'cW'
+	" "^\t*[^ \t]\+$" not work, why?
+	while search("^\t*[^ \t][^ \t]*$", flags) > 0
+		let flags = 'W'
+		let msg = printf('%s:%d:%s', expand('%'), line('.'), substitute(getline('.'), '\t', '....', 'g'))
+		laddexpr msg
+	endwhile
+
+	call setpos('.', save_cursor)
+	vertical lopen
+	vertical resize 30
+	set conceallevel=2 concealcursor=nc
+	syntax match qfFileName /^.*| / transparent conceal
+	"syntax match qfFileName /^[^|]*/ transparent conceal
+endfunction
+
+autocmd FileType qf silent! unmap <CR>
+
+nnoremap <silent> mo :<C-U>call oumg#mo()<CR>
+nnoremap <silent> mg :<C-U>call oumg#mg(v:count)<CR>
