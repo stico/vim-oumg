@@ -126,7 +126,5 @@ function! oumg#mo()
 	"syntax match qfFileName /^[^|]*/ transparent conceal
 endfunction
 
-autocmd FileType qf silent! unmap <CR>
-
 nnoremap <silent> mo :<C-U>call oumg#mo()<CR>
 nnoremap <silent> mg :<C-U>call oumg#mg(v:count)<CR>
