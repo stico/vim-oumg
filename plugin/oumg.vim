@@ -96,12 +96,19 @@ function! oumg#mg(count)
 
 	" Step 2: perform the jumping
 	if file_path == expand("%")
-		let @/ = (len(title_str) == 0) ? "" : "^" . title_str
-		normal n
+		"let @/ = (len(title_str) == 0) ? "" : "^\t*" . title_str		" works, but unnecessary since messup the search history 
+		"normal n
+		"normal zt
+		
+		if search("^\t*" . title_str, 'cW') > 0
+			normal zt
+		else
+			echo "ERROR: oumg#mg(), can not jump to title:" . title_str
+		endif
 	else
-		" TODO: how goto the Title and also highlight it, seems :edit only accept one cmd
-		"execute 'silent edit +let\ @/="' . title_str . '" ' . file_path
-		execute 'silent edit +/^' . title_str . ' ' . file_path
+		execute 'silent edit +/^\\t*' . title_str . ' ' . file_path
+		"execute 'let @/="\t*' . title_str . '"'				" works, but unnecessary since messup the search history
+		normal zt
 	endif
 endfunction
 
@@ -111,10 +118,14 @@ function! oumg#mo()
 
 	call cursor(1, 1)
 	let flags = 'cW'
-	" "^\t*[^ \t]\+$" not work, why?
-	while search("^\t*[^ \t][^ \t]*$", flags) > 0
+	let file = expand('%')
+	"while search("^\t*[^ \t]\+$", flags) > 0					" NOT work, why?
+	"while search("^\t*[^ \t][^ \t]*$", flags) > 0					" works, but all Chinese becomes outline
+	while search("^\t*[-a-z0-9_\.][-a-z0-9_\.]*[\t ]*$", flags) > 0			" works, but a bit strict
 		let flags = 'W'
-		let msg = printf('%s:%d:%s', expand('%'), line('.'), substitute(getline('.'), '\t', '....', 'g'))
+		let title = substitute(getline('.'), '[ \t]*$', '', '')			" remove trailing blanks
+		let titleToShow = substitute(title, '\t', '....', 'g')			" quickfix window removes any preceding blanks
+		let msg = printf('%s:%d:%s', file, line('.'), titleToShow)
 		laddexpr msg
 	endwhile
 
@@ -122,7 +133,7 @@ function! oumg#mo()
 	vertical lopen
 	vertical resize 30
 	set conceallevel=2 concealcursor=nc
-	syntax match qfFileName /^.*| / transparent conceal
+	syntax match qfFileName /^.*| / transparent conceal			" plus line above, hide the filename and line number in quickfix window, not sure how it works yet.
 	"syntax match qfFileName /^[^|]*/ transparent conceal
 endfunction
 
