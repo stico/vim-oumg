@@ -14,14 +14,13 @@
 " type "mg" on the text you want to jump
 "
 " Pattern:
-" TTT / ~TTT		" only Title
-" FFF / @FFF		" only File
-" AAA@YYY / ~AAA@YYY	" Title in File	
+" ~<Title>@<File>	" '~' is optional, File could have relative path or file extension (default is '.txt')
 "
 " Test:
 " python
 " python2
 " @python
+" @py-lang/str.py
 " @$MY_DCC/python/python.txt
 " ~Lang_Pickling_Unpickling
 " ~Lang_Pickling_Unpickling@python
@@ -59,8 +58,12 @@ function! oumg#find_candidate(str)
     endif
 
     " file in root paths 
-    for root in ["$MY_DCC/A_NOTE", "$MY_DCO/A_NOTE"]
+    for root in ["$MY_DCC/A_NOTE", "$MY_DCO/A_NOTE", "$MY_FCS/oumisc/oumisc-git"]
         let file_candidate = expand(root . '/' . a:str . '.txt')
+        if(filereadable(file_candidate))
+            return file_candidate
+        endif
+        let file_candidate = expand(root . '/' . a:str)
         if(filereadable(file_candidate))
             return file_candidate
         endif
@@ -112,30 +115,4 @@ function! oumg#mg(count)
 	endif
 endfunction
 
-function! oumg#mo()
-	call setloclist(0, [])
-	let save_cursor = getpos(".")
-
-	call cursor(1, 1)
-	let flags = 'cW'
-	let file = expand('%')
-	"while search("^\t*[^ \t]\+$", flags) > 0					" NOT work, why?
-	"while search("^\t*[^ \t][^ \t]*$", flags) > 0					" works, but all Chinese becomes outline
-	while search("^\t*[-a-z0-9_\.][-a-z0-9_\.]*[\t ]*$", flags) > 0			" works, but a bit strict
-		let flags = 'W'
-		let title = substitute(getline('.'), '[ \t]*$', '', '')			" remove trailing blanks
-		let titleToShow = substitute(title, '\t', '....', 'g')			" quickfix window removes any preceding blanks
-		let msg = printf('%s:%d:%s', file, line('.'), titleToShow)
-		laddexpr msg
-	endwhile
-
-	call setpos('.', save_cursor)
-	vertical lopen
-	vertical resize 30
-	set conceallevel=2 concealcursor=nc
-	syntax match qfFileName /^.*| / transparent conceal			" plus line above, hide the filename and line number in quickfix window, not sure how it works yet.
-	"syntax match qfFileName /^[^|]*/ transparent conceal
-endfunction
-
-nnoremap <silent> mo :<C-U>call oumg#mo()<CR>
 nnoremap <silent> mg :<C-U>call oumg#mg(v:count)<CR>
