@@ -58,7 +58,7 @@ function! oumg#find_candidate(str)
     endif
 
     " file in root paths 
-    for root in ["$MY_DCC/A_NOTE", "$MY_DCO/A_NOTE", "$MY_FCS/oumisc/oumisc-git"]
+    for root in ["$MY_DCC/A_NOTE", "$MY_DCO/A_NOTE", "$MY_DCD/Projects/A_NOTE", "$MY_FCS/oumisc/oumisc-git"]
         let file_candidate = expand(root . '/' . a:str . '.txt')
         if(filereadable(file_candidate))
             return file_candidate
@@ -72,47 +72,58 @@ function! oumg#find_candidate(str)
     return ""
 endfunction
 
-function! oumg#mg(count)
+function! oumg#parse_file_title()
 	let def_str = expand('<cWORD>')
 	let def_list = split(def_str, "@")
 
-	" Step 1: find out Title and File
-	if len(def_list) == 2						
-		let title_str = substitute(def_list[0], '^\~', '', '')
-		let file_path = oumg#find_candidate(def_list[1])
-	elseif match(def_str, '^@') >= 0						" only File
-		let title_str = ""
-		let file_path = oumg#find_candidate(substitute(def_str, '^@', '', ''))
-	elseif match(def_str, '^\~') >= 0						" only Title
-		let title_str = substitute(def_list[0], '^\~', '', '')
-		let file_path = expand("%")
-	else										" need further detect
-		let file_candidate = oumg#find_candidate(def_str)
-		if filereadable(file_candidate)						" only File
-			let title_str = ""
-			let file_path = file_candidate
-		else									" only Title
-			let title_str = def_str
-			let file_path = expand("%")
-		endif
+	" 1st: title@file, formal format
+	if len(def_list) == 2							
+		return { "file" : oumg#find_candidate(def_list[1]), "title" : substitute(def_list[0], '^\~', '', '') }
 	endif
 
-	" Step 2: perform the jumping
-	if file_path == expand("%")
-		"let @/ = (len(title_str) == 0) ? "" : "^\t*" . title_str		" works, but unnecessary since messup the search history 
-		"normal n
-		"normal zt
-		
-		if search("^\t*" . title_str, 'cW') > 0
-			normal zt
-		else
-			echo "ERROR: oumg#mg(), can not jump to title:" . title_str
-		endif
-	else
-		execute 'silent edit +/^\\t*' . title_str . ' ' . file_path
-		"execute 'let @/="\t*' . title_str . '"'				" works, but unnecessary since messup the search history
-		normal zt
+	" 2nd: @file, only File
+	if match(def_str, '^@') >= 0
+		return { "file" : oumg#find_candidate(substitute(def_str, '^@', '', '')), "title" : "" }
 	endif
+
+	" 3rd: file, simple string, try File
+	let file_candidate = oumg#find_candidate(def_str)
+	if filereadable(file_candidate)
+		return { "file" : file_candidate, "title" : "" }
+	endif
+
+	" 4th: special treatment for note collection
+	let current_line = getline('.')
+	if expand("$MY_ENV/zgen/collection_note/collection_content.txt") == expand("%:p") && search("^@", 'bW') > 0
+		let file = substitute(getline('.'), "^@", '', '')
+		let title_list = matchlist(current_line, '^\t*\([^[:blank:]]*\).*')
+		return { "file" : file, "title" : title_list[1] }
+	endif
+
+	" 5th: ~title, only Title
+	if match(def_str, '^\~') >= 0						
+		return { "file" : expand("%"), "title" : substitute(def_list[0], '^\~', '', '') }
+	endif
+
+	" 6th: title, simple string, try Tile
+	return { "file" : expand("%"), "title" : def_str }
+endfunction
+
+function! oumg#jump_file_title(location)
+	if a:location["file"] == expand("%")
+		if search("^\t*" . a:location["title"], 'cW') <= 0
+			echo "ERROR: oumg#mg(), can not jump to title:" . a:location["title"]
+		endif
+		normal zz
+	else
+		execute 'silent edit +/^\\t*' . a:location["title"] . ' ' . a:location["file"]
+		normal zz
+	endif
+endfunction
+
+function! oumg#mg(count)
+	let location = oumg#parse_file_title()
+	call oumg#jump_file_title(location)
 endfunction
 
 nnoremap <silent> mg :<C-U>call oumg#mg(v:count)<CR>
