@@ -29,9 +29,6 @@
 " $MY_DCC/python/python.txt
 "
 " TODO:
-"	auto gen outline?
-"	open source? (make configurable: prefix, finding path, filename pattern, etc)
-"
 "	vim regex how to match non-Ascii: 
 "		/[^\x00-\x7F]		# exclude "ASCII hex character range"
 "		/[^\x00-\xFF]		# exclude "Extened ASCII hex character range"
@@ -58,7 +55,7 @@ function! oumg#find_candidate(str)
     endif
 
     " file in root paths 
-    for root in ["$MY_DCC/A_NOTE", "$MY_DCO/A_NOTE", "$MY_DCD/Projects/A_NOTE", "$MY_FCS/oumisc/oumisc-git"]
+    for root in ["$MY_DCC/note", "$MY_DCO/note", "$MY_DCD/project/note", "$MY_FCS/oumisc/oumisc-git"]
         let file_candidate = expand(root . '/' . a:str . '.txt')
         if(filereadable(file_candidate))
             return file_candidate
@@ -96,6 +93,7 @@ function! oumg#parse_file_title()
 	let current_line = getline('.')
 	if expand("$MY_ENV/zgen/collection_note/collection_content.txt") == expand("%:p") && search("^@", 'bW') > 0
 		let file = substitute(getline('.'), "^@", '', '')
+		" use fake 'title' to get correct jump 
 		let title_list = matchlist(current_line, '^\t*\([^[:blank:]]*\).*')
 		return { "file" : file, "title" : title_list[1] }
 	endif
