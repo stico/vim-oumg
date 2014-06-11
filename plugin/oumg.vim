@@ -91,7 +91,7 @@ function! oumg#parse_file_title()
 
 	" 4th: special treatment for note collection
 	let current_line = getline('.')
-	if expand("$MY_ENV/zgen/collection_note/collection_content.txt") == expand("%:p") && search("^@", 'bW') > 0
+	if expand("$MY_ENV/zgen/collection/all_content.txt") == expand("%:p") && search("^@", 'bW') > 0
 		let file = substitute(getline('.'), "^@", '', '')
 		" use fake 'title' to get correct jump 
 		let title_list = matchlist(current_line, '^\t*\([^[:blank:]]*\).*')
