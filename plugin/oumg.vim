@@ -49,18 +49,21 @@ let g:loaded_vim_oumg = 1
 
 function! oumg#find_candidate(str)
     " already a file path
-    let file_candidate = expand(a:str)
+    " OR: just keep [[:alnum:]] and $, / 
+    let str_stripped = substitute(a:str, '^[@,\[\]\(\)[:space:]]*\|[@,\[\]\(\)[:space:]]*$', '', 'g')	
+
+    let file_candidate = expand(str_stripped)
     if(filereadable(file_candidate))
         return file_candidate
     endif
 
     " file in root paths 
     for root in ["$MY_DCC/note", "$MY_DCO/note", "$MY_DCD/project/note", "$MY_FCS/oumisc/oumisc-git"]
-        let file_candidate = expand(root . '/' . a:str . '.txt')
+        let file_candidate = expand(root . '/' . str_stripped . '.txt')
         if(filereadable(file_candidate))
             return file_candidate
         endif
-        let file_candidate = expand(root . '/' . a:str)
+        let file_candidate = expand(root . '/' . str_stripped)
         if(filereadable(file_candidate))
             return file_candidate
         endif
@@ -80,7 +83,8 @@ function! oumg#parse_file_title()
 
 	" 2nd: @file, only File
 	if match(def_str, '^@') >= 0
-		return { "file" : oumg#find_candidate(substitute(def_str, '^@', '', '')), "title" : "" }
+		return { "file" : oumg#find_candidate(def_str), "title" : "" }
+		"return { "file" : oumg#find_candidate(substitute(def_str, '^@', '', '')), "title" : "" }
 	endif
 
 	" 3rd: file, simple string, try File
