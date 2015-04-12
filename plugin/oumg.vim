@@ -11,12 +11,18 @@
 " See :help license
 "
 " Usage:
-" type "mg" on the text you want to jump
+" 1) jump to definition: type "mg" (in normal mode) on text you want to jump
+" 2) show doc outline: type "mo" (in normal mode)
+"
+" Note:
+" this plugin will chnage some quickfix (qf) window behavior
+" 1) <enter> will jump to target and close quickfix window
+" 2) <esc> will close quickfix window without jump
 "
 " Pattern:
 " ~<Title>@<File>	" '~' is optional, File could have relative path or file extension (default is '.txt')
 "
-" Test:
+" Sample:
 " python
 " python2
 " @python
@@ -113,11 +119,14 @@ endfunction
 
 function! oumg#jump_file_title(location)
 	if a:location["file"] == expand("%")
-		if search("^\t*" . a:location["title"], 'cW') <= 0
-			echo "ERROR: oumg#mg(), can not jump to title:" . a:location["title"]
-		endif
-		normal zz
+		let @/ = "^\t*" . a:location["title"] . "\s*$"
 	else
+		"let file = readfile(expand("xxx")) " read file
+		"for line in file
+		"let match = matchstr(line, '.*shouldmatch') " regex match
+		"if(!empty(match))
+		"endif
+		"endfor
 		execute 'silent edit +/^\\t*' . a:location["title"] . ' ' . a:location["file"]
 		normal zz
 	endif
@@ -128,4 +137,76 @@ function! oumg#mg(count)
 	call oumg#jump_file_title(location)
 endfunction
 
+function! oumg#gen_title_pattern(level)
+	"return "^\t*[^ \t]\+$"							" NOT work, why?
+	"return "^\t*\S\+\s*$"							" NOT work, why?
+	"return "^[[:space:]]*[-_\.[:alnum:]]\+[[:space:]]*$"			" NOT work, since vim not fully support POSIX regex syntax
+	"return "^\t*[^ \t][^ \t]*$", flags) > 0				" works, but all Chinese becomes outline
+	"return "^\t*[-_a-z0-9\/\.][-_a-z0-9\/\.]*[\t ]*$"			" works, but a bit strict, chinese all excluded
+	"return '^\t*[^ \t\r\n\v\f]\{2,30}[ \t\r\n\v\f]*$'			" works, include chinese
+	"return '^\t\{0,' . a:level . '}[^ \t\r\n\v\f]\{2,20}[ \t\r\n\v\f]*$'	" works, support levels, Chinese char also counts 1 (NOT 2)
+	
+	return '^\t\{0,' . a:level . '}[^ \t\r\n\v\f]\{2,20}[ \t\r\n\v\f]*$'
+endfunction
+
+function! oumg#mo(count)
+	" safty check: to avoid long pause
+	if line('$') >= 8000
+		echo "WARN: too much line to handle, give up!"
+		return
+	endif
+
+	" safty check: count should be valid
+	if a:count <= 0 || a:count > 5
+		let level = 1
+	else
+		let level = a:count - 1
+	endif
+
+	call setloclist(0, [])
+	let save_cursor = getpos(".")
+
+	call cursor(1, 1)
+	let flags = 'cW'
+	let file = expand('%')
+	let pattern = oumg#gen_title_pattern(level)
+	while search(pattern, flags) > 0
+		let flags = 'W'
+		let title = substitute(getline('.'), '[ \t]*$', '', '')				" remove trailing blanks
+		let titleToShow = substitute(title, '\t', '........', 'g')			" quickfix window removes any preceding blanks
+		if titleToShow !~ "^\\." 
+			let blank = printf('%s:%d:%s', file, line('.'), "  ")
+			laddexpr blank
+		endif
+		let msg = printf('%s:%d:%s', file, line('.'), titleToShow)
+		laddexpr msg
+	endwhile
+
+	let lwidth = (20*(level+1))-(8*level)
+	call setpos('.', save_cursor)
+	vertical lopen
+	execute "vertical resize " . lwidth
+
+	" hide filename and line number in quickfix window, not sure how it works yet.
+	set conceallevel=2 concealcursor=nc
+	syntax match qfFileName /^.*| / transparent conceal
+	"syntax match qfFileName /^[^|]*/ transparent conceal
+endfunction
+
+nnoremap <silent> mo :<C-U>call oumg#mo(v:count)<CR>
 nnoremap <silent> mg :<C-U>call oumg#mg(v:count)<CR>
+
+" Control the Quickfix window
+" Works for "[Quickfix List]": keep cursor in quickfix window and show content above 
+" Works for "[Location List]": jump to corresponding location (loc window closed). (how it works?)
+au FileType qf nmap <buffer> <esc> :close<cr>
+au FileType qf nmap <buffer> <cr> <cr>zz<c-w><c-p>
+" Deprecated by above lines
+""autocmd BufWinEnter quickfix silent! nnoremap <ESC> :q<CR>
+""autocmd BufWinEnter quickfix silent! exec "unmap <CR>" | exec "nnoremap <CR> <CR>:bd ". g:qfix_win . "<CR>zt"	" seems not need delete the buffer anymore (because of what? vim updates? plugin updates?)
+"autocmd BufWinEnter "Location List" let g:qfix_win = bufnr("$")
+"autocmd BufWinEnter "Location List" silent! nnoremap <ESC> :exec "bd " . g:qfix_win<CR>
+"autocmd BufWinEnter "Location List" silent! exec "unmap <CR>" | exec "nnoremap <CR> <CR>zt"
+"autocmd BufLeave * if exists("g:qfix_win") && expand("<abuf>") == g:qfix_win | unlet! g:qfix_win | exec "unmap <ESC>" | exec "nnoremap <CR> o<Esc>" | endif
+"autocmd BufWinLeave * if exists("g:qfix_win") && expand("<abuf>") == g:qfix_win | unlet! g:qfix_win | exec "unmap <ESC>" | exec "nnoremap <CR> o<Esc>" | endif	" use BufLeave, seems BufWinLeave NOT triggered when hit <Enter> in outline(quickfix) window
+
