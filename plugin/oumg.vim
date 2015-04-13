@@ -34,19 +34,12 @@
 " ~Lang_Pickling_Unpickling@$MY_DCC/python/python.txt
 " $MY_DCC/python/python.txt
 "
-" TODO:
-"	vim regex how to match non-Ascii: 
-"		/[^\x00-\x7F]		# exclude "ASCII hex character range"
-"		/[^\x00-\xFF]		# exclude "Extened ASCII hex character range"
-"		\w			# Chinese will not match
-"
-"	Highlight
-"		Title		OumnTitle			:syn match OumnTitle /^##.*/
-"		File Ref	OumnLinkFile			# (source external file)
-"		Title Ref	OumnLinkTitle			:syn match OumnLinkTitle /[xxx]/
-"
-"		File Path	note/xxx.txt, xxx/xxx.txt	# xxx.txt seems the simplest, dir name "note" makes it not so obvious to see but still not difficult to goto
-"		Material Loc	<sub folder>
+" TODO_Highlight:
+"Title		OumnTitle			:syn match OumnTitle /^##.*/
+"File Ref	OumnLinkFile			# (source external file)
+"Title Ref	OumnLinkTitle			:syn match OumnLinkTitle /[xxx]/
+"File Path	note/xxx.txt, xxx/xxx.txt	# xxx.txt seems the simplest, dir name "note" makes it not so obvious to see but still not difficult to goto
+"Material Loc	<sub folder>
 
 if exists("g:loaded_vim_oumg") || &cp || v:version < 700
 	finish
@@ -66,9 +59,11 @@ function! oumg#find_file(str)
 	" try tag
 	for tag_filename in ["$HOME/.myenv/list/tags_addi", "$HOME/.myenv/zgen/tags_note"]	
 		for line in readfile(expand(tag_filename))
-			let match = matchstr(line, '^' . str_stripped . '=.*')
-			if(!empty(match))
-				return substitute(match, '[^=]\+=', '', '')
+			let tag_value = substitute(matchstr(line, '^' . str_stripped . '=.*'), '[^=]\+=', '', '')
+
+			" might be a dir tag, which NOT really wanted
+			if(filereadable(tag_value))
+				return tag_value
 			endif
 		endfor
 	endfor	
@@ -105,7 +100,7 @@ function! oumg#parse_file_title(str)
 		"return { "file" : oumg#find_file(substitute(def_str, '^@', '', '')), "title" : "" }
 	endif
 
-	" 3rd: file (NOT ~xxx), simple string, try File. 
+	" 3rd: file (NOT ~xxx), simple string, try file. 
 	if match(def_str, '^\~') < 0
 		let file_candidate = oumg#find_file(def_str)
 		if filereadable(file_candidate)
