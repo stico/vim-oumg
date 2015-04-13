@@ -73,21 +73,20 @@ function! oumg#find_file(str)
 		endfor
 	endfor	
     
+	" try file in pre-defined paths 
+	for root in ["$MY_DCC/note", "$MY_DCO/note", "$MY_DCD/project/note", "$MY_FCS/oumisc/oumisc-git"]
+	    let file_candidate = expand(root . '/' . str_stripped . '.txt')
+	    if(filereadable(file_candidate))
+	        return file_candidate
+	    endif
+	    let file_candidate = expand(root . '/' . str_stripped)
+	    if(filereadable(file_candidate))
+	        return file_candidate
+	    endif
+	endfor
+
 	" otherwise return empty
 	return ""
-
-	"Deprecated by direct access tag file
-	"" file in root paths 
-	"for root in ["$MY_DCC/note", "$MY_DCO/note", "$MY_DCD/project/note", "$MY_FCS/oumisc/oumisc-git"]
-	"    let file_candidate = expand(root . '/' . str_stripped . '.txt')
-	"    if(filereadable(file_candidate))
-	"        return file_candidate
-	"    endif
-	"    let file_candidate = expand(root . '/' . str_stripped)
-	"    if(filereadable(file_candidate))
-	"        return file_candidate
-	"    endif
-	"endfor
 endfunction
 
 function! oumg#parse_file_title(str)
@@ -159,15 +158,15 @@ function! oumg#jump_file_title(cmd, location)
 	endif
 endfunction
 
-function! oumg#gen_title_pattern(level)
+function! oumg#gen_pattern_outline(level)
 	"return "^\t*[^ \t]\+$"							" NOT work, why?
 	"return "^\t*\S\+\s*$"							" NOT work, why?
 	"return "^[[:space:]]*[-_\.[:alnum:]]\+[[:space:]]*$"			" NOT work, since vim not fully support POSIX regex syntax
 	"return "^\t*[^ \t][^ \t]*$", flags) > 0				" works, but all Chinese becomes outline
 	"return "^\t*[-_a-z0-9\/\.][-_a-z0-9\/\.]*[\t ]*$"			" works, but a bit strict, chinese all excluded
 	"return '^\t*[^ \t\r\n\v\f]\{2,30}[ \t\r\n\v\f]*$'			" works, include chinese
-	"return '^\t\{0,' . a:level . '}[^ \t\r\n\v\f]\{2,20}[ \t\r\n\v\f]*$'	" works, support levels, Chinese char also counts 1 (NOT 2)
-	return '^\t\{0,' . a:level . '}[^ \t\r\n\v\f]\{2,20}[ \t\r\n\v\f]*$'
+	"return '^\t\{0,' . a:level . '}[^ \t\r\n\v\f]\{2,20}[ \t\r\n\v\f]*$'	" almost works, support levels, Chinese char also counts 1 (NOT 2), but some 1st level head can NOT be matched (e.g. overview), why?
+	return '^\t\{0,' . a:level . '}[^[:space:]]\{2,20}[[:space:]]*$'
 endfunction
 
 function! oumg#mo(count)
@@ -190,7 +189,7 @@ function! oumg#mo(count)
 	call cursor(1, 1)
 	let flags = 'cW'
 	let file = expand('%')
-	let pattern = oumg#gen_title_pattern(level)
+	let pattern = oumg#gen_pattern_outline(level)
 	while search(pattern, flags) > 0
 		let flags = 'W'
 		let title = substitute(getline('.'), '[ \t]*$', '', '')				" remove trailing blanks
