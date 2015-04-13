@@ -53,50 +53,65 @@ if exists("g:loaded_vim_oumg") || &cp || v:version < 700
 endif
 let g:loaded_vim_oumg = 1
 
-function! oumg#find_candidate(str)
-    " already a file path
-    " OR: just keep [[:alnum:]] and $, / 
-    let str_stripped = substitute(a:str, '^[@,\[\]\(\)[:space:]]*\|[@,\[\]\(\)[:space:]]*$', '', 'g')	
+function! oumg#find_file(str)
+	" OR: just keep [[:alnum:]] and $, / 
+	let str_stripped = substitute(a:str, '^[@,\[\]\(\)[:space:]]*\|[@,\[\]\(\)[:space:]]*$', '', 'g')	
 
-    let file_candidate = expand(str_stripped)
-    if(filereadable(file_candidate))
-        return file_candidate
-    endif
+	" already a file path
+	let file_candidate = expand(str_stripped)
+	if(filereadable(file_candidate))
+		return file_candidate
+	endif
 
-    " file in root paths 
-    for root in ["$MY_DCC/note", "$MY_DCO/note", "$MY_DCD/project/note", "$MY_FCS/oumisc/oumisc-git"]
-        let file_candidate = expand(root . '/' . str_stripped . '.txt')
-        if(filereadable(file_candidate))
-            return file_candidate
-        endif
-        let file_candidate = expand(root . '/' . str_stripped)
-        if(filereadable(file_candidate))
-            return file_candidate
-        endif
-    endfor
+	" try tag
+	for tag_filename in ["$HOME/.myenv/list/tags_addi", "$HOME/.myenv/zgen/tags_note"]	
+		for line in readfile(expand(tag_filename))
+			let match = matchstr(line, '^' . str_stripped . '=.*')
+			if(!empty(match))
+				return substitute(match, '[^=]\+=', '', '')
+			endif
+		endfor
+	endfor	
+    
+	" otherwise return empty
+	return ""
 
-    return ""
+	"Deprecated by direct access tag file
+	"" file in root paths 
+	"for root in ["$MY_DCC/note", "$MY_DCO/note", "$MY_DCD/project/note", "$MY_FCS/oumisc/oumisc-git"]
+	"    let file_candidate = expand(root . '/' . str_stripped . '.txt')
+	"    if(filereadable(file_candidate))
+	"        return file_candidate
+	"    endif
+	"    let file_candidate = expand(root . '/' . str_stripped)
+	"    if(filereadable(file_candidate))
+	"        return file_candidate
+	"    endif
+	"endfor
 endfunction
 
-function! oumg#parse_file_title()
-	let def_str = expand('<cWORD>')
+function! oumg#parse_file_title(str)
+	let def_str = substitute(a:str, '^[[:space:]]*\|[[:space:]]*$', '', 'g')	
+	let def_str = substitute(def_str, '^\~/', $HOME . '/', '')				" handle confliction of ~/xxx and ~xxx
 	let def_list = split(def_str, "@")
 
 	" 1st: title@file, formal format
 	if len(def_list) == 2							
-		return { "file" : oumg#find_candidate(def_list[1]), "title" : substitute(def_list[0], '^\~', '', '') }
+		return { "file" : oumg#find_file(def_list[1]), "title" : substitute(def_list[0], '^\~', '', '') }
 	endif
 
 	" 2nd: @file, only File
 	if match(def_str, '^@') >= 0
-		return { "file" : oumg#find_candidate(def_str), "title" : "" }
-		"return { "file" : oumg#find_candidate(substitute(def_str, '^@', '', '')), "title" : "" }
+		return { "file" : oumg#find_file(def_str), "title" : "" }
+		"return { "file" : oumg#find_file(substitute(def_str, '^@', '', '')), "title" : "" }
 	endif
 
-	" 3rd: file, simple string, try File
-	let file_candidate = oumg#find_candidate(def_str)
-	if filereadable(file_candidate)
-		return { "file" : file_candidate, "title" : "" }
+	" 3rd: file (NOT ~xxx), simple string, try File. 
+	if match(def_str, '^\~') < 0
+		let file_candidate = oumg#find_file(def_str)
+		if filereadable(file_candidate)
+			return { "file" : file_candidate, "title" : "" }
+		endif
 	endif
 
 	" 4th: special treatment for note collection
@@ -117,9 +132,21 @@ function! oumg#parse_file_title()
 	return { "file" : expand("%"), "title" : def_str }
 endfunction
 
-function! oumg#jump_file_title(location)
+function! oumg#jump_file_title(cmd, location)
 	if a:location["file"] == expand("%")
-		let @/ = "^\t*" . a:location["title"] . "\s*$"
+		let title_pattern_loose = "^\\t*" . a:location["title"]
+		let title_pattern_strict = title_pattern_loose . "\\s*$"
+		if search(title_pattern_strict, 'cw') > 0
+			let @/ = title_pattern_strict
+			normal n
+			normal zz
+		elseif search(title_pattern_loose, 'cw') > 0
+			let @/ = title_pattern_loose
+			normal n
+			normal zz
+		else
+			echo "NO title pattern found: " . title_pattern_loose
+		endif
 	else
 		"let file = readfile(expand("xxx")) " read file
 		"for line in file
@@ -127,14 +154,9 @@ function! oumg#jump_file_title(location)
 		"if(!empty(match))
 		"endif
 		"endfor
-		execute 'silent edit +/^\\t*' . a:location["title"] . ' ' . a:location["file"]
+		execute a:cmd . ' +/^\\t*' . a:location["title"] . ' ' . a:location["file"]
 		normal zz
 	endif
-endfunction
-
-function! oumg#mg(count)
-	let location = oumg#parse_file_title()
-	call oumg#jump_file_title(location)
 endfunction
 
 function! oumg#gen_title_pattern(level)
@@ -145,7 +167,6 @@ function! oumg#gen_title_pattern(level)
 	"return "^\t*[-_a-z0-9\/\.][-_a-z0-9\/\.]*[\t ]*$"			" works, but a bit strict, chinese all excluded
 	"return '^\t*[^ \t\r\n\v\f]\{2,30}[ \t\r\n\v\f]*$'			" works, include chinese
 	"return '^\t\{0,' . a:level . '}[^ \t\r\n\v\f]\{2,20}[ \t\r\n\v\f]*$'	" works, support levels, Chinese char also counts 1 (NOT 2)
-	
 	return '^\t\{0,' . a:level . '}[^ \t\r\n\v\f]\{2,20}[ \t\r\n\v\f]*$'
 endfunction
 
@@ -193,15 +214,68 @@ function! oumg#mo(count)
 	"syntax match qfFileName /^[^|]*/ transparent conceal
 endfunction
 
-nnoremap <silent> mo :<C-U>call oumg#mo(v:count)<CR>
-nnoremap <silent> mg :<C-U>call oumg#mg(v:count)<CR>
-
 " Control the Quickfix window
-" Works for "[Quickfix List]": keep cursor in quickfix window and show content above 
-" Works for "[Location List]": jump to corresponding location (loc window closed). (how it works?)
 au FileType qf nmap <buffer> <esc> :close<cr>
 au FileType qf nmap <buffer> <cr> <cr>zz<c-w><c-p>
-" Deprecated by above lines
+
+" plugin entrance of normal mode
+nnoremap <silent> mo :<C-U>call oumg#mo(v:count)<CR>
+nnoremap <silent> mg :<C-U>call oumg#jump_file_title("silent edit", oumg#parse_file_title(expand('<cWORD>')))<CR>
+
+" plugin entrance of command line mode
+command! -nargs=1 -complete=file E      :call oumg#jump_file_title("e"     , oumg#parse_file_title(<f-args>))
+command! -nargs=1 -complete=file New    :call oumg#jump_file_title("new"   , oumg#parse_file_title(<f-args>))
+command! -nargs=1 -complete=file Vnew   :call oumg#jump_file_title("vnew"  , oumg#parse_file_title(<f-args>))
+command! -nargs=1 -complete=file Tabnew :call oumg#jump_file_title("tabnew", oumg#parse_file_title(<f-args>))
+
+" *hack* buidlin command via command line abbr
+:cabbrev e      <c-r>=(getcmdtype()==':' && getcmdpos()==1 ? 'E'      : 'e'     )<CR>
+:cabbrev new    <c-r>=(getcmdtype()==':' && getcmdpos()==1 ? 'New'    : 'new'   )<CR>
+:cabbrev vnew   <c-r>=(getcmdtype()==':' && getcmdpos()==1 ? 'Vnew'   : 'vnew'  )<CR>
+:cabbrev tabnew <c-r>=(getcmdtype()==':' && getcmdpos()==1 ? 'Tabnew' : 'tabnew')<CR>
+
+
+
+"Deprecated by direct using oumg#parse_file_title() and oumg#jump_file_title() 
+"command! -nargs=1 E :call oumg#tag_add_support("e", <f-args>)
+"command! -nargs=1 Tabnew :call oumg#tag_add_support("tabnew", <f-args>)
+"nnoremap <silent> mg :<C-U>call oumg#mg()<CR>
+"function! oumg#mg()
+"	let location = oumg#parse_file_title()
+"	call oumg#jump_file_title("silent edit", location)
+"endfunction
+
+"Deprecated by oumg#parse_file_title() and oumg#jump_file_title()
+"function! oumg#tag_add_support(cmd, tag)
+"	let file_candidate=oumg#find_file(a:tag)
+"	if filereadable(file_candidate)
+"		execute a:cmd . " " . file_candidate
+"	endif
+"endfunction
+
+
+"Deprecated by oumg#find_file()
+"function! oumg#tag_get_value(tag)
+"	" no translate for exist path
+"	if filereadable(a:tag)
+"		return a:tag
+"	endif
+"
+"	" translate tag
+"	for tag_filename in ["$HOME/.myenv/list/tags_addi", "$HOME/.myenv/zgen/tags_note"]	
+"		for line in readfile(expand(tag_filename))
+"			let match = matchstr(line, '^' . a:tag . '=.*')
+"			if(!empty(match))
+"				return substitute(match, '[^=]\+=', '', '')
+"			endif
+"		endfor
+"	endfor	
+"
+"	" otherwise return same string
+"	return a:tag
+"endfunction
+
+" Deprecated by "au FileType qf nmap ..."
 ""autocmd BufWinEnter quickfix silent! nnoremap <ESC> :q<CR>
 ""autocmd BufWinEnter quickfix silent! exec "unmap <CR>" | exec "nnoremap <CR> <CR>:bd ". g:qfix_win . "<CR>zt"	" seems not need delete the buffer anymore (because of what? vim updates? plugin updates?)
 "autocmd BufWinEnter "Location List" let g:qfix_win = bufnr("$")
