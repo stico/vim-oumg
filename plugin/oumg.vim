@@ -1,4 +1,5 @@
 " oumg.vim - a personal goto definition plugin
+"
 " Maintainer:   ouyzhu
 " Version:      0.1
 
@@ -59,11 +60,15 @@ function! oumg#find_file(str)
 	" try tag
 	for tag_filename in ["$HOME/.myenv/list/tags_addi", "$HOME/.myenv/zgen/tags_note"]	
 		for line in readfile(expand(tag_filename))
-			let tag_value = substitute(matchstr(line, '^' . str_stripped . '=.*'), '[^=]\+=', '', '')
 
+			if match(line, '^' . str_stripped . '=.*') < 0
+				continue
+			endif
+
+			let file_candidate = expand(substitute(line, '[^=]\+=', '', ''))
 			" might be a dir tag, which NOT really wanted
-			if(filereadable(tag_value))
-				return tag_value
+			if(filereadable(file_candidate))	
+				return file_candidate
 			endif
 		endfor
 	endfor	
