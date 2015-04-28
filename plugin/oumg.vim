@@ -48,8 +48,8 @@ endif
 let g:loaded_vim_oumg = 1
 
 function! oumg#find_file(str)
-	" OR: just keep [[:alnum:]] and $, / 
-	let str_stripped = substitute(a:str, '^[@,\[\]\(\)[:space:]]*\|[@,\[\]\(\)[:space:]]*$', '', 'g')	
+	"let str_stripped = substitute(a:str, '^[@,\[\]\(\)[:space:]]*\|[@,\[\]\(\)[:space:]]*$', '', 'g')	
+	let str_stripped = substitute(a:str, '^@', '', 'g')	" oumg#parse_file_title() already did most work
 
 	" already a file path
 	let file_candidate = expand(str_stripped)
@@ -90,8 +90,8 @@ function! oumg#find_file(str)
 endfunction
 
 function! oumg#parse_file_title(str)
-	let def_str = substitute(a:str, '^[[:space:]]*\|[[:space:]]*$', '', 'g')	
-	let def_str = substitute(def_str, '^\~/', $HOME . '/', '')				" handle confliction of ~/xxx and ~xxx
+	let def_str = substitute(a:str, '^[,\.\[\]\(\)[:space:]]*\|[,\.\[\]\(\)[:space:]]*$', '', 'g')	" remove useless char at the beginning/end
+	let def_str = substitute(def_str, '^\~/', $HOME . '/', '')					" handle confliction of ~/xxx (path) and ~xxx (title)
 	let def_list = split(def_str, "@")
 
 	" 1st: title@file, formal format
