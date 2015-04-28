@@ -213,9 +213,9 @@ function! oumg#mo(count)
 	"syntax match qfFileName /^[^|]*/ transparent conceal
 endfunction
 
-" Control the Quickfix window
-au FileType qf nmap <buffer> <esc> :close<cr>
-au FileType qf nmap <buffer> <cr> <cr>zz<c-w><c-p>
+" Control the Quickfix window. Just record here, should set in .vimrc
+"au FileType qf nmap <buffer> <esc> :close<cr>
+"au FileType qf nmap <buffer> <cr> <cr>zz<c-w><c-p>
 
 " plugin entrance of normal mode
 nnoremap <silent> mo :<C-U>call oumg#mo(v:count)<CR>
