@@ -213,15 +213,78 @@ function! oumg#mo(count)
 	"syntax match qfFileName /^[^|]*/ transparent conceal
 endfunction
 
+function! oumg#buffer_list_str()
+	" return ':ls' output as string, call with ':silent' to suppress output in GUI
+	let buffer_list = ''
+	redir =>> buffer_list
+	ls
+	redir END
+	return buffer_list
+endfunction
+
+function! oumg#on_qf_init()
+	" check file type
+	if &ft != 'qf'
+		return
+	endif
+
+	" use buffer list to check, seem no better way after long investigation
+	silent let buffer_list = oumg#buffer_list_str()
+	let pattern = bufnr('%') . '.*"\[Quickfix List\]"'
+	if match(buffer_list, pattern) < 0
+		return
+	endif
+
+	setlocal modifiable
+	execute 'write! /tmp/vim-oumg-qf-' .  bufnr('%')
+endfunction
+
+function! oumg#on_qf_write()
+	if !&modified
+		return
+	endif
+
+	let lines = getline(1, '$')		" text after edit (if have)
+	let entries = getqflist()		" qf entries (original, before edit)
+
+	let index = 0
+	let deleted = 0
+	for entry in entries
+		let line_pattern = '^' . bufname(entry.bufnr) . '|' . entry.lnum . '|.*$' 
+
+		if match(lines, line_pattern) < 0
+			" line deleted in buffer, so remove it from entries
+			call remove(entries, index)
+			let deleted += 1
+		endif
+
+		let index += 1
+	endfor
+
+	if deleted > 0
+		echo deleted . ' lines removed'
+	endif
+
+	call setqflist(entries, 'r')
+	setlocal nomodified
+endfunction
+
 " Control the Quickfix window. Just record here, should set in .vimrc
 "au FileType qf nmap <buffer> <esc> :close<cr>
 "au FileType qf nmap <buffer> <cr> <cr>zz<c-w><c-p>
 
-" plugin entrance of normal mode
+" plugin entrance for quickfix init and write
+augroup quickfix_reflector
+	autocmd!
+	autocmd BufWriteCmd vim-oumg-qf-* :call oumg#on_qf_write()
+	autocmd BufReadPost quickfix nested :call oumg#on_qf_init()
+augroup END
+
+" plugin entrance for normal mode
 nnoremap <silent> mo :<C-U>call oumg#mo(v:count)<CR>
 nnoremap <silent> mg :<C-U>call oumg#jump_file_title("silent edit", oumg#parse_file_title(expand('<cWORD>')))<CR>
 
-" plugin entrance of command line mode
+" plugin entrance for command line mode
 command! -nargs=1 -complete=file E      :call oumg#jump_file_title("e"     , oumg#parse_file_title(<f-args>))
 command! -nargs=1 -complete=file New    :call oumg#jump_file_title("new"   , oumg#parse_file_title(<f-args>))
 command! -nargs=1 -complete=file Vnew   :call oumg#jump_file_title("vnew"  , oumg#parse_file_title(<f-args>))
@@ -235,6 +298,9 @@ command! -nargs=1 -complete=file Tabnew :call oumg#jump_file_title("tabnew", oum
 
 
 
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" Deprecated 
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 "Deprecated by direct using oumg#parse_file_title() and oumg#jump_file_title() 
 "command! -nargs=1 E :call oumg#tag_add_support("e", <f-args>)
 "command! -nargs=1 Tabnew :call oumg#tag_add_support("tabnew", <f-args>)
