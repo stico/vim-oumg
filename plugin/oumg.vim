@@ -35,6 +35,10 @@
 " ~Lang_Pickling_Unpickling@$MY_DCC/python/python.txt
 " $MY_DCC/python/python.txt
 "
+" TODO_quickfix:
+" - when delete lines in qf window/buffer, only half take effects
+" - delete 1st line, then <enter> on 1st line will NOT jump
+"
 " TODO_Highlight:
 "Title		OumnTitle			:syn match OumnTitle /^##.*/
 "File Ref	OumnLinkFile			# (source external file)
@@ -235,38 +239,25 @@ function! oumg#on_qf_init()
 		return
 	endif
 
+	setlocal wrap
 	setlocal modifiable
 	execute 'write! /tmp/vim-oumg-qf-' .  bufnr('%')
 endfunction
 
 function! oumg#on_qf_write()
+	" check modify status
 	if !&modified
 		return
 	endif
 
-	let lines = getline(1, '$')		" text after edit (if have)
+	" filter those deleted lines
 	let entries = getqflist()		" qf entries (original, before edit)
+	call filter(entries, 'match(getline(1,''$''), ''^'' . bufname(v:val.bufnr) . ''|'' . v:val.lnum . ''|.*$'' ) >= 0')
 
-	let index = 0
-	let deleted = 0
-	for entry in entries
-		let line_pattern = '^' . bufname(entry.bufnr) . '|' . entry.lnum . '|.*$' 
-
-		if match(lines, line_pattern) < 0
-			" line deleted in buffer, so remove it from entries
-			call remove(entries, index)
-			let deleted += 1
-		endif
-
-		let index += 1
-	endfor
-
-	if deleted > 0
-		echo deleted . ' lines removed'
-	endif
-
+	" set backup to qf list
 	call setqflist(entries, 'r')
 	setlocal nomodified
+	setlocal modifiable	" seems need set again, otherwise nomodifiable after 'write'
 endfunction
 
 " Control the Quickfix window. Just record here, should set in .vimrc
