@@ -137,8 +137,8 @@ endfunction
 
 function! oumg#jump_file_title(cmd, location)
 	if a:location["file"] == expand("%")
-		let title_pattern_loose = "^\\t*" . a:location["title"]
-		let title_pattern_strict = title_pattern_loose . "\\s*$"
+		let title_pattern_loose = "^\\c\\t*" . a:location["title"]
+		let title_pattern_strict = "^\\c\\t*" . a:location["title"] . "\\s*$"
 		if search(title_pattern_strict, 'cw') > 0
 			let @/ = title_pattern_strict
 			normal n
@@ -157,7 +157,7 @@ function! oumg#jump_file_title(cmd, location)
 		"if(!empty(match))
 		"endif
 		"endfor
-		execute a:cmd . ' +/^\\t*' . a:location["title"] . ' ' . a:location["file"]
+		execute a:cmd . ' +/\\c^\\t*' . a:location["title"] . ' ' . a:location["file"]
 		normal zz
 	endif
 endfunction
@@ -279,12 +279,14 @@ nnoremap <silent> mg :<C-U>call oumg#jump_file_title("silent edit", oumg#parse_f
 command! -nargs=1 -complete=file E      :call oumg#jump_file_title("e"     , oumg#parse_file_title(<f-args>))
 command! -nargs=1 -complete=file New    :call oumg#jump_file_title("new"   , oumg#parse_file_title(<f-args>))
 command! -nargs=1 -complete=file Vnew   :call oumg#jump_file_title("vnew"  , oumg#parse_file_title(<f-args>))
+command! -nargs=1 -complete=file Vi     :call oumg#jump_file_title("tabnew", oumg#parse_file_title(<f-args>))
 command! -nargs=1 -complete=file Tabnew :call oumg#jump_file_title("tabnew", oumg#parse_file_title(<f-args>))
 
 " *hack* buidlin command via command line abbr
 :cabbrev e      <c-r>=(getcmdtype()==':' && getcmdpos()==1 ? 'E'      : 'e'     )<CR>
 :cabbrev new    <c-r>=(getcmdtype()==':' && getcmdpos()==1 ? 'New'    : 'new'   )<CR>
 :cabbrev vnew   <c-r>=(getcmdtype()==':' && getcmdpos()==1 ? 'Vnew'   : 'vnew'  )<CR>
+:cabbrev vi     <c-r>=(getcmdtype()==':' && getcmdpos()==1 ? 'Vi'     : 'vi'    )<CR>
 :cabbrev tabnew <c-r>=(getcmdtype()==':' && getcmdpos()==1 ? 'Tabnew' : 'tabnew')<CR>
 
 
