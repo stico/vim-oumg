@@ -28,7 +28,7 @@
 " python2
 " @python
 " @py-lang/str.py
-" @$MY_DCC/python/python.txt
+" @$MY_DCC/vim/vim.txt
 " ~Lang_Pickling_Unpickling
 " ~Lang_Pickling_Unpickling@python
 " ~Lang_Pickling_Unpickling2@python2
@@ -46,53 +46,97 @@
 "File Path	note/xxx.txt, xxx/xxx.txt	# xxx.txt seems the simplest, dir name "note" makes it not so obvious to see but still not difficult to goto
 "Material Loc	<sub folder>
 
-if exists("g:loaded_vim_oumg") || &cp || v:version < 700
-	finish
-endif
-let g:loaded_vim_oumg = 1
+" START: script starts here
+"if exists("g:loaded_vim_oumg") || &cp || v:version < 700
+"	finish
+"endif
+"let g:loaded_vim_oumg = 1
 
+" RETURN: readable file or empty string
 function! oumg#find_file(str)
-	"let str_stripped = substitute(a:str, '^[@,\[\]\(\)[:space:]]*\|[@,\[\]\(\)[:space:]]*$', '', 'g')	
-	let str_stripped = substitute(a:str, '^@', '', 'g')	" oumg#parse_file_title() already did most work
+	let str_stripped = substitute(a:str, '^@', '', 'g')			" oumg#parse_file_title() did most strip, here only remove the leading ‘@' if exist
+	let str_stripped = substitute(str_stripped, '[[:space:]]\+', ' ', 'g')	" merge multiple space into one for split
+	let path_list = split(str_stripped, " ")
 
-	" already a file path
-	let file_candidate = expand(str_stripped)
-	if(filereadable(file_candidate))
-		return file_candidate
+	" 1st item might be a tag
+	let base_candidate = oumg#parse_tag(path_list[0])
+
+	" shortcut: single item and is a file, use expand as need support env var
+	if(len(path_list) == 1 && filereadable(expand(base_candidate)))
+		return expand(base_candidate)
 	endif
 
-	" try tag
-	for tag_filename in ["$HOME/.myenv/list/tags_addi", "$HOME/.myenv/zgen/tags_note"]	
-		for line in readfile(expand(tag_filename))
+	" base should be a dir
+	let base = isdirectory(base_candidate) ? base_candidate : getcwd()
+	let path_list_real = isdirectory(base_candidate) ? path_list[1:] : path_list[0:]
 
-			if match(line, '^' . str_stripped . '=.*') < 0
-				continue
-			endif
-
-			let file_candidate = expand(substitute(line, '[^=]\+=', '', ''))
-			" might be a dir tag, which NOT really wanted
-			if(filereadable(file_candidate))	
-				return file_candidate
-			endif
-		endfor
-	endfor	
-    
-	" try file in pre-defined paths 
-	for root in ["$MY_DCC/note", "$MY_DCO/note", "$MY_DCD/project/note", "$MY_FCS/oumisc/oumisc-git"]
-	    let file_candidate = expand(root . '/' . str_stripped . '.txt')
-	    if(filereadable(file_candidate))
-	        return file_candidate
-	    endif
-	    let file_candidate = expand(root . '/' . str_stripped)
-	    if(filereadable(file_candidate))
-	        return file_candidate
-	    endif
+	" safe check: base should NOT be / or $HOME
+	let root_expanded = expand('/')
+	let base_expanded = expand(base)
+	let home_expanded = expand('$HOME')
+	if ( base_expanded == home_expanded || base_expanded == root_expanded) 
+		echo 'ERROR: base should NOT be $HOME (~/) or root (/)'
+		return ""
+	endif
+	
+	" create glob pattern
+	let path_glob = '**'
+	for item in path_list_real
+		let path_glob = path_glob . '/*' . item . '*'
 	endfor
 
-	" otherwise return empty
+	" just use the 1st readable file, seems already ignorecase
+	" TODO: sort list by length
+	let file_candidate_list = globpath(base, path_glob, 0, 1)	" 0 means NOT apply 'suffixes' and 'wildignore', 1 means return as list
+	for file_candidate in file_candidate_list
+		if filereadable(file_candidate)
+			return file_candidate
+		endif
+	endfor
+
+	" otherwise return empty string
 	return ""
 endfunction
 
+function! Oumg_str_len_cmp(str1, str2)
+	return strlen(a:str2) - strlen(a:str1)
+endfunction
+
+" RETURN: translated tag (file or dir), or itself
+function! oumg#parse_tag(str)
+	" try tag def files
+	for tag_filename in ["$HOME/.myenv/list/tags_addi", "$HOME/.myenv/zgen/tags_note"]	
+		for line in readfile(expand(tag_filename))
+
+			if match(line, '^' . a:str . '=.*') < 0
+				continue
+			endif
+
+			let path_candidate = expand(substitute(line, '[^=]\+=', '', ''))
+			" might be a dir tag, which NOT really wanted
+			if(filereadable(path_candidate) || isdirectory(path_candidate))
+				return path_candidate
+			endif
+		endfor
+	endfor	
+
+	" try file in pre-defined paths 
+	for root in ["$MY_DCC/note", "$MY_DCO/note", "$MY_DCD/project/note", "$MY_FCS/oumisc/oumisc-git"]
+	    let path_candidate = expand(root . '/' . a:str . '.txt')
+	    if(filereadable(path_candidate) || isdirectory(path_candidate))
+	        return path_candidate
+	    endif
+	    let path_candidate = expand(root . '/' . a:str)
+	    if(filereadable(path_candidate) || isdirectory(path_candidate))
+	        return path_candidate
+	    endif
+	endfor
+
+	" otherwise just return tag itself
+	return a:str
+endfunction
+
+" RETURN: a dict with keys: "title", "file"
 function! oumg#parse_file_title(str)
 	let def_str = substitute(a:str, '^[,\.\[\]\(\)[:space:]]*\|[,\.\[\]\(\)[:space:]]*$', '', 'g')	" remove useless char at the beginning/end
 	let def_str = substitute(def_str, '^\~/', $HOME . '/', '')					" handle confliction of ~/xxx (path) and ~xxx (title)
@@ -122,7 +166,7 @@ function! oumg#parse_file_title(str)
 	if expand("$MY_ENV/zgen/collection/all_content.txt") == expand("%:p") && search("^@", 'bW') > 0
 		let file = substitute(getline('.'), "^@", '', '')
 		" use fake 'title' to get correct jump 
-		let title_list = matchlist(current_line, '^\t*\([^[:blank:]]*\).*')
+		let title_list = matchlist(current_line, '^\t*\([^[:space:]]*\).*')
 		return { "file" : file, "title" : title_list[1] }
 	endif
 
@@ -136,7 +180,7 @@ function! oumg#parse_file_title(str)
 endfunction
 
 function! oumg#jump_file_title(cmd, location)
-	if a:location["file"] == expand("%")
+	if(a:location["file"] == expand("%"))
 		let title_pattern_loose = "^\\c\\t*" . a:location["title"]
 		let title_pattern_strict = "^\\c\\t*" . a:location["title"] . "\\s*$"
 		if search(title_pattern_strict, 'cw') > 0
@@ -148,7 +192,7 @@ function! oumg#jump_file_title(cmd, location)
 			normal n
 			normal zz
 		else
-			echo "NO title pattern found: " . title_pattern_loose
+			echo "INFO: NO title pattern found: " . title_pattern_loose
 		endif
 	else
 		"let file = readfile(expand("xxx")) " read file
@@ -196,11 +240,11 @@ function! oumg#mo(count)
 	let pattern = oumg#gen_pattern_outline(level)
 	while search(pattern, flags) > 0
 		let flags = 'W'
-		let title = substitute(getline('.'), '[ \t]*$', '', '')				" remove trailing blanks
-		let titleToShow = substitute(title, '\t', '........', 'g')			" quickfix window removes any preceding blanks
+		let title = substitute(getline('.'), '[[:space:]]*$', '', '')		" remove trailing spaces
+		let titleToShow = substitute(title, '\t', '........', 'g')		" location list removes any preceding space, so use '.' instead
 		if titleToShow !~ "^\\." 
-			let blank = printf('%s:%d:%s', file, line('.'), "  ")
-			laddexpr blank
+			let blank_line = printf('%s:%d:%s', file, line('.'), "  ")
+			laddexpr blank_line
 		endif
 		let msg = printf('%s:%d:%s', file, line('.'), titleToShow)
 		laddexpr msg
@@ -276,11 +320,11 @@ nnoremap <silent> mo :<C-U>call oumg#mo(v:count)<CR>
 nnoremap <silent> mg :<C-U>call oumg#jump_file_title("silent edit", oumg#parse_file_title(expand('<cWORD>')))<CR>
 
 " plugin entrance for command line mode
-command! -nargs=1 -complete=file E      :call oumg#jump_file_title("e"     , oumg#parse_file_title(<f-args>))
-command! -nargs=1 -complete=file New    :call oumg#jump_file_title("new"   , oumg#parse_file_title(<f-args>))
-command! -nargs=1 -complete=file Vnew   :call oumg#jump_file_title("vnew"  , oumg#parse_file_title(<f-args>))
-command! -nargs=1 -complete=file Vi     :call oumg#jump_file_title("tabnew", oumg#parse_file_title(<f-args>))
-command! -nargs=1 -complete=file Tabnew :call oumg#jump_file_title("tabnew", oumg#parse_file_title(<f-args>))
+command! -nargs=* -complete=file E      :call oumg#jump_file_title("e"     , oumg#parse_file_title(<q-args>))
+command! -nargs=* -complete=file New    :call oumg#jump_file_title("new"   , oumg#parse_file_title(<q-args>))
+command! -nargs=* -complete=file Vnew   :call oumg#jump_file_title("vnew"  , oumg#parse_file_title(<q-args>))
+command! -nargs=* -complete=file Tabnew :call oumg#jump_file_title("tabnew", oumg#parse_file_title(<q-args>))
+command! -nargs=* -complete=file Vi     :call oumg#jump_file_title("tabnew", oumg#parse_file_title(<q-args>))
 
 " *hack* buidlin command via command line abbr
 :cabbrev e      <c-r>=(getcmdtype()==':' && getcmdpos()==1 ? 'E'      : 'e'     )<CR>

@@ -1,0 +1,19 @@
+!_TAG_FILE_SORTED	2	/0=unsorted, 1=sorted, 2=foldcase/
+E	/Users/ouyangzhu/.vim/bundle/vim-oumg/plugin/oumg.vim	/^command! -nargs=* -complete=file E      :call oumg#jump_file_title("e"     , oumg#parse_file_title(<q-args>))$/;"	c	language:Vim
+mg	/Users/ouyangzhu/.vim/bundle/vim-oumg/plugin/oumg.vim	/^nnoremap <silent> mg :<C-U>call oumg#jump_file_title("silent edit", oumg#parse_file_title(expand('<cWORD>')))<CR>$/;"	m	language:Vim
+mo	/Users/ouyangzhu/.vim/bundle/vim-oumg/plugin/oumg.vim	/^nnoremap <silent> mo :<C-U>call oumg#mo(v:count)<CR>$/;"	m	language:Vim
+New	/Users/ouyangzhu/.vim/bundle/vim-oumg/plugin/oumg.vim	/^command! -nargs=* -complete=file New    :call oumg#jump_file_title("new"   , oumg#parse_file_title(<q-args>))$/;"	c	language:Vim
+oumg#buffer_list_str	/Users/ouyangzhu/.vim/bundle/vim-oumg/plugin/oumg.vim	/^function! oumg#buffer_list_str()$/;"	f	language:Vim
+oumg#find_file	/Users/ouyangzhu/.vim/bundle/vim-oumg/plugin/oumg.vim	/^function! oumg#find_file(str)$/;"	f	language:Vim
+oumg#gen_pattern_outline	/Users/ouyangzhu/.vim/bundle/vim-oumg/plugin/oumg.vim	/^function! oumg#gen_pattern_outline(level)$/;"	f	language:Vim
+oumg#jump_file_title	/Users/ouyangzhu/.vim/bundle/vim-oumg/plugin/oumg.vim	/^function! oumg#jump_file_title(cmd, location)$/;"	f	language:Vim
+oumg#mo	/Users/ouyangzhu/.vim/bundle/vim-oumg/plugin/oumg.vim	/^function! oumg#mo(count)$/;"	f	language:Vim
+oumg#on_qf_init	/Users/ouyangzhu/.vim/bundle/vim-oumg/plugin/oumg.vim	/^function! oumg#on_qf_init()$/;"	f	language:Vim
+oumg#on_qf_write	/Users/ouyangzhu/.vim/bundle/vim-oumg/plugin/oumg.vim	/^function! oumg#on_qf_write()$/;"	f	language:Vim
+oumg#parse_file_title	/Users/ouyangzhu/.vim/bundle/vim-oumg/plugin/oumg.vim	/^function! oumg#parse_file_title(str)$/;"	f	language:Vim
+oumg#parse_tag	/Users/ouyangzhu/.vim/bundle/vim-oumg/plugin/oumg.vim	/^function! oumg#parse_tag(str)$/;"	f	language:Vim
+Oumg_str_len_cmp	/Users/ouyangzhu/.vim/bundle/vim-oumg/plugin/oumg.vim	/^function! Oumg_str_len_cmp(str1, str2)$/;"	f	language:Vim
+quickfix_reflector	/Users/ouyangzhu/.vim/bundle/vim-oumg/plugin/oumg.vim	/^augroup quickfix_reflector$/;"	a	language:Vim
+Tabnew	/Users/ouyangzhu/.vim/bundle/vim-oumg/plugin/oumg.vim	/^command! -nargs=* -complete=file Tabnew :call oumg#jump_file_title("tabnew", oumg#parse_file_title(<q-args>))$/;"	c	language:Vim
+Vi	/Users/ouyangzhu/.vim/bundle/vim-oumg/plugin/oumg.vim	/^command! -nargs=* -complete=file Vi     :call oumg#jump_file_title("tabnew", oumg#parse_file_title(<q-args>))$/;"	c	language:Vim
+Vnew	/Users/ouyangzhu/.vim/bundle/vim-oumg/plugin/oumg.vim	/^command! -nargs=* -complete=file Vnew   :call oumg#jump_file_title("vnew"  , oumg#parse_file_title(<q-args>))$/;"	c	language:Vim
