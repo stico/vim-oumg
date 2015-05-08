@@ -35,10 +35,6 @@
 " ~Lang_Pickling_Unpickling@$MY_DCC/python/python.txt
 " $MY_DCC/python/python.txt
 "
-" TODO_quickfix:
-" - when delete lines in qf window/buffer, only half take effects
-" - delete 1st line, then <enter> on 1st line will NOT jump
-"
 " TODO_Highlight:
 "Title		OumnTitle			:syn match OumnTitle /^##.*/
 "File Ref	OumnLinkFile			# (source external file)
@@ -47,10 +43,10 @@
 "Material Loc	<sub folder>
 
 " START: script starts here
-"if exists("g:loaded_vim_oumg") || &cp || v:version < 700
-"	finish
-"endif
-"let g:loaded_vim_oumg = 1
+if exists("g:loaded_vim_oumg") || &cp || v:version < 700
+	finish
+endif
+let g:loaded_vim_oumg = 1
 
 " RETURN: readable file or empty string
 function! oumg#find_file(str)
@@ -86,8 +82,8 @@ function! oumg#find_file(str)
 	endfor
 
 	" just use the 1st readable file, seems already ignorecase
-	" TODO: sort list by length
 	let file_candidate_list = globpath(base, path_glob, 0, 1)	" 0 means NOT apply 'suffixes' and 'wildignore', 1 means return as list
+	call sort(file_candidate_list, "Oumg_str_len_cmp")
 	for file_candidate in file_candidate_list
 		if filereadable(file_candidate)
 			return file_candidate
@@ -99,7 +95,7 @@ function! oumg#find_file(str)
 endfunction
 
 function! Oumg_str_len_cmp(str1, str2)
-	return strlen(a:str2) - strlen(a:str1)
+	return strlen(a:str1) - strlen(a:str2)
 endfunction
 
 " RETURN: translated tag (file or dir), or itself
