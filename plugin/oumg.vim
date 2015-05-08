@@ -179,13 +179,18 @@ function! oumg#jump_file_title(cmd, location)
 	if(a:location["file"] == expand("%"))
 		let title_pattern_loose = "^\\c\\t*" . a:location["title"]
 		let title_pattern_strict = "^\\c\\t*" . a:location["title"] . "\\s*$"
+
+		" add a entry jump list so could use jump histoy
+		normal m'
+
+		" find and goto title
 		if search(title_pattern_strict, 'cw') > 0
 			let @/ = title_pattern_strict
-			normal n
+			"normal n	" NOT need, as search() already did
 			normal zz
 		elseif search(title_pattern_loose, 'cw') > 0
 			let @/ = title_pattern_loose
-			normal n
+			"normal n	" NOT need, as search() already did
 			normal zz
 		else
 			echo "INFO: NO title pattern found: " . title_pattern_loose
