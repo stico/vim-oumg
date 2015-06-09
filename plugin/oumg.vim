@@ -2,7 +2,7 @@
 "
 " Maintainer:   ouyzhu
 " Version:      0.1
-
+ 
 " Installation:
 " Place in either ~/.vim/plugin/oumg.vim (to load at start up) or
 " ~/.vim/autoload/oumg.vim (to load automatically as needed).
@@ -24,6 +24,10 @@
 " ~<Title>@<File>	" '~' is optional, File could have relative path or file extension (default is '.txt')
 "
 " Sample:
+" @vimrc:
+" @vimrc)
+" @~/.vimrc,
+" @$HOME/.vimrc,
 " python
 " python2
 " @python
@@ -134,8 +138,14 @@ endfunction
 
 " RETURN: a dict with keys: "title", "file"
 function! oumg#parse_file_title(str)
-	let def_str = substitute(a:str, '^[,\.\[\]\(\)[:space:]]*\|[,\.\[\]\(\)[:space:]]*$', '', 'g')	" remove useless char at the beginning/end
-	let def_str = substitute(def_str, '^\~/', $HOME . '/', '')					" handle confliction of ~/xxx (path) and ~xxx (title)
+
+	" remove useless char at the beginning/end
+	let def_str = substitute(a:str, '^[,;:\.\[\]\(\)[:space:]]*\|[,;:\.\[\]\(\)[:space:]]*$', '', 'g')
+
+	" handle confliction of ~/xxx (path) and ~xxx (title)
+	let def_str = substitute(def_str, '\~/', $HOME . '/', '')
+
+	" extract tile and file part
 	let def_list = split(def_str, "@")
 
 	" 1st: title@file, formal format
@@ -159,7 +169,7 @@ function! oumg#parse_file_title(str)
 
 	" 4th: special treatment for note collection
 	let current_line = getline('.')
-	if expand("$MY_ENV/zgen/collection/all_content.txt") == expand("%:p") && search("^@", 'bW') > 0
+	if expand("$HOME/.myenv/zgen/collection/all_content.txt") == expand("%:p") && search("^@", 'bW') > 0
 		let file = substitute(getline('.'), "^@", '', '')
 		" use fake 'title' to get correct jump 
 		let title_list = matchlist(current_line, '^\t*\([^[:space:]]*\).*')
