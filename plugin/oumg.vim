@@ -116,6 +116,8 @@ function! oumg#parse_tag(str)
 			" might be a dir tag, which NOT really wanted
 			if(filereadable(path_candidate) || isdirectory(path_candidate))
 				return path_candidate
+			else
+				echo 'ERROR: path candidate (=' . path_candidate . ') found, but FAILED to translate!'
 			endif
 		endfor
 	endfor	
