@@ -58,7 +58,12 @@ function! oumg#find_file(str)
 	let str_stripped = substitute(str_stripped, '[[:space:]]\+', ' ', 'g')	" merge multiple space into one for split
 	let path_list = split(str_stripped, " ")
 
-	" 1st item might be a tag
+	" shortcut: check it is file in current dir
+	if(len(path_list) == 1 && filereadable(expand(path_list[0])))
+		return expand(path_list[0])
+	endif
+	
+	" perform tag check against 1st arg
 	let base_candidate = oumg#parse_tag(path_list[0])
 
 	" shortcut: single item and is a file, use expand as need support env var
@@ -142,7 +147,8 @@ endfunction
 function! oumg#parse_file_title(str)
 
 	" remove useless char at the beginning/end
-	let def_str = substitute(a:str, '^[,;:\.\[\]\(\)[:space:]]*\|[,;:\.\[\]\(\)[:space:]]*$', '', 'g')
+	" NOTE: "\." should be NOT be removed, otherwise relative path to current/parent dir will fail
+	let def_str = substitute(a:str, '^[,;:\[\]\(\)[:space:]]*\|[,;:\.\[\]\(\)[:space:]]*$', '', 'g')
 
 	" handle confliction of ~/xxx (path) and ~xxx (title)
 	let def_str = substitute(def_str, '\~/', $HOME . '/', '')
