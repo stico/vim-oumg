@@ -220,7 +220,12 @@ function! oumg#jump_file_title(cmd, location)
 		"if(!empty(match))
 		"endif
 		"endfor
-		execute a:cmd . ' +/\\c^\\t*' . a:location["title"] . ' ' . a:location["file"]
+		
+		"execute a:cmd . ' +/\\c^\\t*' . a:location["title"] . ' ' . a:location["file"]
+		
+		" search pattern should not contain '/', otherwise gets error 'not an editor command', use '\V' (Very No Magin) also complains, since '/' means 'search'
+		let search_pattern_loose = ' +/\\c^\\t*' . substitute(a:location["title"], '/', '.', 'g') 
+		execute a:cmd . search_pattern_loose . ' ' . a:location["file"]
 		normal zz
 	endif
 endfunction
