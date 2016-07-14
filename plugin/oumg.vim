@@ -148,7 +148,8 @@ function! oumg#parse_file_title(str)
 
 	" remove useless char at the beginning/end
 	" NOTE: "\." should be NOT be removed, otherwise relative path to current/parent dir will fail
-	let def_str = substitute(a:str, '^[,;:\[\]\(\)[:space:]]*\|[,;:\.\[\]\(\)[:space:]]*$', '', 'g')
+	" NOTE: to remove "<" and ">", should use "<" and "\>" in pattern
+	let def_str = substitute(a:str, '^<[,;:\[\]\(\)[:space:]]*\|[,;:\.\[\]\(\)\>[:space:]]*$', '', 'g')
 
 	" handle confliction of ~/xxx (path) and ~xxx (title)
 	let def_str = substitute(def_str, '\~/', $HOME . '/', '')
