@@ -24,20 +24,24 @@
 " ~<Title>@<File>	" '~' is optional, File could have relative path or file extension (default is '.txt')
 "
 " Sample:
-" @vimrc:
-" @vimrc)
-" @~/.vimrc,
-" @$HOME/.vimrc,
-" python
-" python2
-" @python
-" @py-lang/str.py
-" @$MY_DCC/vim/vim.txt
+" ../README.md		" relative path
+" @../README.md		" relative path, with @
+" 你好vimrc测试一下	" among Chinese
+" @vimrc:		" heading/tailing special char, and with @
+" (@vimrc)		" heading/tailing special char, inside bracket
+" @~/.vimrc,		" heading/tailing special char, with ~tilde@bash
+" (ss)vimrc)		" heading/tailing special char, ) in heading part
+" @$MY_DCC/vim/vim.txt,	" heading/tailing special char, including env var
+" @$HOME/.vimrc		" including env var
+" python		" tag
+" python21398		" not exist
+"
+" ~overview@http
 " ~Lang_Pickling_Unpickling
 " ~Lang_Pickling_Unpickling@python
 " ~Lang_Pickling_Unpickling2@python2
 " ~Lang_Pickling_Unpickling@$MY_DCC/python/python.txt
-" $MY_DCC/python/python.txt
+" overview@$MY_DCC/python/python.txt			" TODO: seems @ still NOT included in expand ('<cword>') after 'set iskeyword+=@'
 "
 " TODO_Highlight:
 "Title		OumnTitle			:syn match OumnTitle /^##.*/
@@ -110,7 +114,7 @@ endfunction
 " RETURN: translated tag (file or dir), or itself
 function! oumg#parse_tag(str)
 	" try tag def files
-	for tag_filename in ["$HOME/.myenv/list/tags_addi", "$HOME/.myenv/zgen/tags_note"]	
+	for tag_filename in ["$HOME/.myenv/list/tags_addi", "$HOME/.myenv/zgen/tags_note"]
 		for line in readfile(expand(tag_filename))
 
 			if match(line, '^' . a:str . '=.*') < 0
@@ -118,7 +122,6 @@ function! oumg#parse_tag(str)
 			endif
 
 			let path_candidate = expand(substitute(line, '[^=]\+=', '', ''))
-			" might be a dir tag, which NOT really wanted
 			if(filereadable(path_candidate) || isdirectory(path_candidate))
 				return path_candidate
 			else
@@ -146,14 +149,16 @@ endfunction
 " RETURN: a dict with keys: "title", "file"
 function! oumg#parse_file_title(str)
 
-	" remove useless char at the beginning/end
-	" NOTE: "\." should be NOT be removed, otherwise relative path to current/parent dir will fail
+	" Get_Valid_STR_Solution_I: use expand('<cword>'), but need set Get_Valid_STR_Solution_I_Keywords
+	let def_str = substitute(a:str, '\~/', $HOME . '/', '')
+	
+	" Get_Valid_STR_Solution_II: (deprecated by Get_Valid_STR_Solution_I) use expand('<cWORD>') and remove useless char at the beginning/end
+	" NOTE: "\." in heading part should NOT be removed, otherwise relative path to current/parent dir will fail
 	" NOTE: to remove "<" and ">", should use "<" and "\>" in pattern
-	let def_str = substitute(a:str, '^<[,;:\[\]\(\)[:space:]]*\|[,;:\.\[\]\(\)\>[:space:]]*$', '', 'g')
-
-	" handle confliction of ~/xxx (path) and ~xxx (title)
-	let def_str = substitute(def_str, '\~/', $HOME . '/', '')
-
+	"let def_str = substitute(a:str, '^<[,;:\[\]\(\)[:space:]]*\|[,;:\.\[\]\(\)\>[:space:]]*$', '', 'g')
+	"handle confliction of ~/xxx (path) and ~xxx (title)
+	"let def_str = substitute(def_str, '\~/', $HOME . '/', '')
+	
 	" extract tile and file part
 	let def_list = split(def_str, "@")
 
@@ -212,7 +217,7 @@ function! oumg#jump_file_title(cmd, location)
 			"normal n	" NOT need, as search() already did
 			normal zz
 		else
-			echo "INFO: NO title pattern found: " . title_pattern_loose
+			echo "WARN: NO title pattern found: " . title_pattern_loose
 		endif
 	else
 		"let file = readfile(expand("xxx")) " read file
@@ -340,9 +345,17 @@ augroup quickfix_reflector
 	autocmd BufReadPost quickfix nested :call oumg#on_qf_init()
 augroup END
 
-" plugin entrance for normal mode
+" Entrance I: outline
 nnoremap <silent> mo :<C-U>call oumg#mo(v:count)<CR>
-nnoremap <silent> mg :<C-U>call oumg#jump_file_title("silent edit", oumg#parse_file_title(expand('<cWORD>')))<CR>
+
+" Entrance II: my go, for more: see Get_Valid_STR_Solution_I and Get_Valid_STR_Solution_II
+" TODO: set and restore each time: Get_Valid_STR_Solution_I_Keywords: . (current dir), / (path sep), $ (shell var), ~ (oumg title & ~tilde@bash), @ (oumg file, need use @-@ instead, see iskeyword@vim)
+set iskeyword+=.
+set iskeyword+=/
+set iskeyword+=$
+set iskeyword+=~
+set iskeyword+=@-@
+nnoremap <silent> mg :<C-U>call oumg#jump_file_title("silent edit", oumg#parse_file_title(expand('<cword>')))<CR>
 
 " plugin entrance for command line mode
 command! -nargs=* -complete=file E      :call oumg#jump_file_title("e"     , oumg#parse_file_title(<q-args>))
