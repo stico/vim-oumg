@@ -52,9 +52,10 @@
 
 " START: script starts here
 if exists("g:loaded_vim_oumg") || &cp || v:version < 700
-	finish
+       finish
 endif
 let g:loaded_vim_oumg = 1
+let g:oumg_temp_iskeyword_value=&iskeyword
 
 " RETURN: readable file or empty string
 function! oumg#find_file(str)
@@ -197,6 +198,23 @@ function! oumg#parse_file_title(str)
 
 	" 6th: title, simple string, try Tile
 	return { "file" : expand("%"), "title" : def_str }
+endfunction
+
+function! oumg#restore_is_keyword()
+	let &iskeyword=g:oumg_temp_iskeyword_value
+endfunction
+
+function! oumg#set_is_keyword()
+	let g:oumg_temp_iskeyword_value=&iskeyword
+	
+	" TODO: if the <word> contains both EN & CN words, seems can NOT expand success
+	" WORD: set and restore each time: Get_Valid_STR_Solution_I_Keywords: . (current dir), / (path sep), $ (shell var), ~ (oumg title & ~tilde@bash), _ (normal word), @ (oumg file, need use @-@ instead, see iskeyword@vim)
+	set iskeyword+=.
+	set iskeyword+=/
+	set iskeyword+=$
+	set iskeyword+=~
+	set iskeyword+=_
+	set iskeyword+=@-@
 endfunction
 
 function! oumg#jump_file_title(cmd, location)
@@ -349,13 +367,9 @@ augroup END
 nnoremap <silent> mo :<C-U>call oumg#mo(v:count)<CR>
 
 " Entrance II: my go, for more: see Get_Valid_STR_Solution_I and Get_Valid_STR_Solution_II
-" TODO: set and restore each time: Get_Valid_STR_Solution_I_Keywords: . (current dir), / (path sep), $ (shell var), ~ (oumg title & ~tilde@bash), @ (oumg file, need use @-@ instead, see iskeyword@vim)
-set iskeyword+=.
-set iskeyword+=/
-set iskeyword+=$
-set iskeyword+=~
-set iskeyword+=@-@
-nnoremap <silent> mg :<C-U>call oumg#jump_file_title("silent edit", oumg#parse_file_title(expand('<cword>')))<CR>
+nnoremap <silent> mg :<C-U>call oumg#set_is_keyword() <bar>
+		     \ call oumg#jump_file_title("silent edit", oumg#parse_file_title(expand('<cword>'))) <bar>
+		     \ call oumg#restore_is_keyword() <CR>
 
 " plugin entrance for command line mode
 command! -nargs=* -complete=file E      :call oumg#jump_file_title("e"     , oumg#parse_file_title(<q-args>))
