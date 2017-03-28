@@ -115,7 +115,7 @@ endfunction
 " RETURN: translated tag (file or dir), or itself
 function! oumg#parse_tag(str)
 	" try tag def files
-	for tag_filename in ["$HOME/.myenv/list/tags_addi", "$HOME/.myenv/zgen/tags_note"]
+	for tag_filename in ["$HOME/.myenv/conf/addi/tags", "$HOME/.myenv/zgen/tags_note"]
 		for line in readfile(expand(tag_filename))
 
 			if match(line, '^' . a:str . '=.*') < 0
