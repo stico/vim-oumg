@@ -2,7 +2,7 @@
 "
 " Maintainer:   ouyzhu
 " Version:      0.1
- 
+
 " Installation:
 " Place in either ~/.vim/plugin/oumg.vim (to load at start up) or
 " ~/.vim/autoload/oumg.vim (to load automatically as needed).
@@ -52,7 +52,7 @@
 
 " START: script starts here
 if exists("g:loaded_vim_oumg") || &cp || v:version < 700
-       finish
+	finish
 endif
 let g:loaded_vim_oumg = 1
 let g:oumg_temp_iskeyword_value=&iskeyword
@@ -133,14 +133,14 @@ function! oumg#parse_tag(str)
 
 	" try file in pre-defined paths 
 	for root in ["$MY_DCC/note", "$MY_DCO/note", "$MY_DCD/project/note", "$MY_FCS/oumisc/oumisc-git"]
-	    let path_candidate = expand(root . '/' . a:str . '.txt')
-	    if(filereadable(path_candidate) || isdirectory(path_candidate))
-	        return path_candidate
-	    endif
-	    let path_candidate = expand(root . '/' . a:str)
-	    if(filereadable(path_candidate) || isdirectory(path_candidate))
-	        return path_candidate
-	    endif
+		let path_candidate = expand(root . '/' . a:str . '.txt')
+		if(filereadable(path_candidate) || isdirectory(path_candidate))
+			return path_candidate
+		endif
+		let path_candidate = expand(root . '/' . a:str)
+		if(filereadable(path_candidate) || isdirectory(path_candidate))
+			return path_candidate
+		endif
 	endfor
 
 	" otherwise just return tag itself
@@ -200,11 +200,11 @@ function! oumg#parse_file_title(str)
 	return { "file" : expand("%"), "title" : def_str }
 endfunction
 
-function! oumg#restore_is_keyword()
+function! oumg#restore_iskeyword()
 	let &iskeyword=g:oumg_temp_iskeyword_value
 endfunction
 
-function! oumg#set_is_keyword()
+function! oumg#set_iskeyword()
 	let g:oumg_temp_iskeyword_value=&iskeyword
 	
 	" TODO: if the <word> contains both EN & CN words, seems can NOT expand success
@@ -265,6 +265,43 @@ function! oumg#gen_pattern_outline(level)
 	return '^\t\{0,' . a:level . '}[^[:space:]]\{2,20}[[:space:]]*$'
 endfunction
 
+function! oumg#mo_common(level)
+	let flags = 'cW'
+	let file = expand('%')
+	let pattern = oumg#gen_pattern_outline(a:level)
+
+	while search(pattern, flags) > 0
+		let flags = 'W'
+		let title = substitute(getline('.'), '[[:space:]]*$', '', '')		" remove trailing spaces
+		let titleToShow = substitute(title, '\t', '........', 'g')		" location list removes any preceding space, so use '.' instead
+		if titleToShow !~ "^\\." 
+			laddexpr printf('%s:%d:%s', file, line('.'), "  ")
+		endif
+		laddexpr printf('%s:%d:%s', file, line('.'), titleToShow)
+	endwhile
+endfunction
+
+function! oumg#mo_sh()
+	let flags = 'cW'
+	let file = expand('%')
+
+	" matchs: function, #*80#comment#*80,
+	let pattern = '^#\{80\}\n#.*\n#\{80\}\|[[:alnum:]_]*[[:blank:]]*()[[:blank:]]*{.*\|function[[:blank:]].*$'
+
+	while search(pattern, flags) > 0
+		let flags = 'W'
+		if getline('.') =~ '^#\{80\}'
+			let category = getline(line('.') + 1)
+			laddexpr printf('%s:%d:%s', file, line('.'), "  ")
+			laddexpr printf('%s:%d:%s', file, line('.') + 1, category)
+		else
+			" only reserves funtion name
+			let fname = substitute(getline('.'), '[[:blank:]]*(.*\|[[:blank:]]*{.*$', '', '')	
+			laddexpr printf('%s:%d:%s', file, line('.'), fname)
+		endif
+	endwhile
+endfunction
+
 function! oumg#mo(count)
 	" safty check: to avoid long pause
 	if line('$') >= 8000
@@ -283,22 +320,13 @@ function! oumg#mo(count)
 	let save_cursor = getpos(".")
 
 	call cursor(1, 1)
-	let flags = 'cW'
-	let file = expand('%')
-	let pattern = oumg#gen_pattern_outline(level)
-	while search(pattern, flags) > 0
-		let flags = 'W'
-		let title = substitute(getline('.'), '[[:space:]]*$', '', '')		" remove trailing spaces
-		let titleToShow = substitute(title, '\t', '........', 'g')		" location list removes any preceding space, so use '.' instead
-		if titleToShow !~ "^\\." 
-			let blank_line = printf('%s:%d:%s', file, line('.'), "  ")
-			laddexpr blank_line
-		endif
-		let msg = printf('%s:%d:%s', file, line('.'), titleToShow)
-		laddexpr msg
-	endwhile
+	if "sh" == &filetype
+		call oumg#mo_sh()
+	else
+		call oumg#mo_common(level)
+	endif
 
-	let lwidth = (20*(level+1))-(8*level)
+	let lwidth = (25*(level+1))-(8*level)
 	call setpos('.', save_cursor)
 	vertical lopen
 	execute "vertical resize " . lwidth
@@ -367,9 +395,9 @@ augroup END
 nnoremap <silent> mo :<C-U>call oumg#mo(v:count)<CR>
 
 " Entrance II: my go, for more: see Get_Valid_STR_Solution_I and Get_Valid_STR_Solution_II
-nnoremap <silent> mg :<C-U>call oumg#set_is_keyword() <bar>
-		     \ call oumg#jump_file_title("silent edit", oumg#parse_file_title(expand('<cword>'))) <bar>
-		     \ call oumg#restore_is_keyword() <CR>
+nnoremap <silent> mg :<C-U>call oumg#set_iskeyword() <bar>
+			\ call oumg#jump_file_title("silent edit", oumg#parse_file_title(expand('<cword>'))) <bar>
+			\ call oumg#restore_iskeyword() <CR>
 
 " plugin entrance for command line mode
 command! -nargs=* -complete=file E      :call oumg#jump_file_title("e"     , oumg#parse_file_title(<q-args>))
