@@ -209,10 +209,10 @@ function! oumg#set_iskeyword()
 	
 	" TODO: if the <word> contains both EN & CN words, seems can NOT expand success
 	" WORD: set and restore each time: Get_Valid_STR_Solution_I_Keywords: . (current dir), / (path sep), $ (shell var), ~ (oumg title & ~tilde@bash), _ (normal word), @ (oumg file, need use @-@ instead, see iskeyword@vim)
+	"set iskeyword+=~	" NOT need to set as keyword, and better auto tag complete when not set
 	set iskeyword+=.
 	set iskeyword+=/
 	set iskeyword+=$
-	set iskeyword+=~
 	set iskeyword+=_
 	set iskeyword+=@-@
 endfunction
@@ -286,7 +286,7 @@ function! oumg#mo_sh()
 	let file = expand('%')
 
 	" matchs: function, #*80#comment#*80,
-	let pattern = '^#\{80\}\n#.*\n#\{80\}\|[[:alnum:]_]*[[:blank:]]*()[[:blank:]]*{.*\|function[[:blank:]].*$'
+	let pattern = '^#\{80\}\n#.*\n#\{80\}$\|^[[:alnum:]_]*[[:blank:]]*()[[:blank:]]*{.*$\|^function[[:blank:]].*$'
 
 	while search(pattern, flags) > 0
 		let flags = 'W'
