@@ -267,22 +267,67 @@ endfunction
 
 function! oumg#mo_common(level)
 	let flags = 'cW'
+	let lwidth = 25
 	let file = expand('%')
 	let pattern = oumg#gen_pattern_outline(a:level)
 
 	while search(pattern, flags) > 0
 		let flags = 'W'
-		let title = substitute(getline('.'), '[[:space:]]*$', '', '')		" remove trailing spaces
+		let title = substitute(getline('.'), '[[:space:]]*$', '', '')		" remove trailing spaces, since need replace space to '.' below
 		let titleToShow = substitute(title, '\t', '........', 'g')		" location list removes any preceding space, so use '.' instead
 		if titleToShow !~ "^\\." 
 			laddexpr printf('%s:%d:%s', file, line('.'), "  ")
 		endif
 		laddexpr printf('%s:%d:%s', file, line('.'), titleToShow)
+
+		let tmplen = strlen(iconv(titleToShow, 'UTF-8', 'latin1'))		" more close to real width if contains Chinese
+		let lwidth = tmplen > lwidth ? tmplen : lwidth
 	endwhile
+
+	return lwidth + 8
+endfunction
+
+function! oumg#mo_python()
+	let flags = 'cW'
+	let lwidth = 25
+	let file = expand('%')
+	let pattern = '^[[:blank:]]*\(def \|class \|@\)'
+
+	while search(pattern, flags) > 0
+		let flags = 'W'
+		let title_tmp1 = substitute(getline('.'), '[[:space:]]*$', '', '')	" remove trailing spaces, since need replace space to '.' below
+
+		let suffix = substitute(title_tmp1, '^[[:space:]]*', '', '')		" only need suffix part here
+		let pftmp1 = substitute(title_tmp1, '^\([[:space:]]*\).*', '\1','g')	" location list removes any preceding space, so use '.' instead
+		let pftmp2 = substitute(pftmp1, ' ', '.','g')
+		let prefix = substitute(pftmp2, '\t', '....','g')
+
+		if suffix =~ "^\\.*@" 							" for python annotation, merge next def line
+			while search(pattern, flags) > 0				" all annotation should be merged
+				let suffix_add = substitute(getline('.'), '^[[:space:]]*\|[[:space:]]*$', '', '')
+				let suffix = suffix . " " . suffix_add
+				if suffix_add !~ "^@" 
+					break
+				endif
+			endwhile
+		endif
+		
+		let titleToShow = prefix . suffix
+		if titleToShow !~ "^\\."
+			laddexpr printf('%s:%d:%s', file, line('.'), "  ")
+		endif
+		laddexpr printf('%s:%d:%s', file, line('.'), titleToShow)
+
+		let tmplen = strlen(iconv(titleToShow, 'UTF-8', 'latin1'))		" more close to real width if contains Chinese
+		let lwidth = tmplen > lwidth ? tmplen : lwidth
+	endwhile
+
+	return lwidth + 8
 endfunction
 
 function! oumg#mo_sh()
 	let flags = 'cW'
+	let lwidth = 25
 	let file = expand('%')
 
 	" matchs: function, #*80#comment#*80,
@@ -299,7 +344,12 @@ function! oumg#mo_sh()
 			let fname = substitute(getline('.'), '[[:blank:]]*(.*\|[[:blank:]]*{.*$', '', '')	
 			laddexpr printf('%s:%d:%s', file, line('.'), fname)
 		endif
+
+		let tmplen = strlen(iconv(titleToShow, 'UTF-8', 'latin1'))		" more close to real width if contains Chinese
+		let lwidth = tmplen > lwidth ? tmplen : lwidth
 	endwhile
+
+	return lwidth + 8
 endfunction
 
 function! oumg#mo(count)
@@ -321,12 +371,14 @@ function! oumg#mo(count)
 
 	call cursor(1, 1)
 	if "sh" == &filetype
-		call oumg#mo_sh()
+		let lwidth = oumg#mo_sh()
+	elseif "python" == &filetype
+		let lwidth = oumg#mo_python()
 	else
-		call oumg#mo_common(level)
+		let lwidth = oumg#mo_common(level)
 	endif
 
-	let lwidth = (25*(level+1))-(8*level)
+	"let lwidth = (25*(level+1))-(8*level)
 	call setpos('.', save_cursor)
 	vertical lopen
 	execute "vertical resize " . lwidth
