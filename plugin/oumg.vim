@@ -339,13 +339,14 @@ function! oumg#mo_sh()
 			let category = getline(line('.') + 1)
 			laddexpr printf('%s:%d:%s', file, line('.'), "  ")
 			laddexpr printf('%s:%d:%s', file, line('.') + 1, category)
+			let tmplen = strlen(iconv(category, 'UTF-8', 'latin1'))			" more close to real width if contains Chinese
 		else
 			" only reserves funtion name
 			let fname = substitute(getline('.'), '[[:blank:]]*(.*\|[[:blank:]]*{.*$', '', '')	
 			laddexpr printf('%s:%d:%s', file, line('.'), fname)
+			let tmplen = strlen(iconv(fname, 'UTF-8', 'latin1'))			" more close to real width if contains Chinese
 		endif
 
-		let tmplen = strlen(iconv(titleToShow, 'UTF-8', 'latin1'))		" more close to real width if contains Chinese
 		let lwidth = tmplen > lwidth ? tmplen : lwidth
 	endwhile
 
