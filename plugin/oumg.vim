@@ -43,6 +43,10 @@
 " ~Lang_Pickling_Unpickling@$MY_DCC/python/python.txt
 " overview@$MY_DCC/python/python.txt			" TODO: seems @ still NOT included in expand ('<cword>') after 'set iskeyword+=@'
 "
+" http://dev.yypm.com/web/?post=posts/standard/interfaces/yy_short_video/sv_soda.md	" url with special chars which can NOT handle by 'netrw-gx' 
+"
+" TODO: support layered syntax like: ~limit~performance@mysql 
+"
 " TODO_Highlight:
 "Title		OumnTitle			:syn match OumnTitle /^##.*/
 "File Ref	OumnLinkFile			# (source external file)
@@ -51,9 +55,9 @@
 "Material Loc	<sub folder>
 
 " START: script starts here
-if exists("g:loaded_vim_oumg") || &cp || v:version < 700
-	finish
-endif
+"if exists("g:loaded_vim_oumg") || &cp || v:version < 700
+"	finish
+"endif
 let g:loaded_vim_oumg = 1
 let g:oumg_temp_iskeyword_value=&iskeyword
 
@@ -215,6 +219,23 @@ function! oumg#set_iskeyword()
 	set iskeyword+=$
 	set iskeyword+=_
 	set iskeyword+=@-@
+endfunction
+
+function! oumg#jump_target()
+	
+	" TODO: open based on filetype
+	
+	"let matched_http_str = matchstr(getline("."), '[a-z]*:\/\/[^ >,;]*')
+	let matched_http_str = matchstr(getline("."), '[a-z]*:\/\/[^[:blank:]]*')
+	if(!empty(matched_http_str))
+		" Open as a http url. NOTE: 'netrw-gx' can NOT support url with char like ?/#, so not really useful
+		silent exec "!open ".shellescape(matched_http_str, 1)
+	else
+		" Open as oumg syntax
+		call oumg#set_iskeyword()
+		call oumg#jump_file_title("silent edit", oumg#parse_file_title(expand('<cword>')))
+		call oumg#restore_iskeyword()
+	endif
 endfunction
 
 function! oumg#jump_file_title(cmd, location)
@@ -448,9 +469,7 @@ augroup END
 nnoremap <silent> mo :<C-U>call oumg#mo(v:count)<CR>
 
 " Entrance II: my go, for more: see Get_Valid_STR_Solution_I and Get_Valid_STR_Solution_II
-nnoremap <silent> mg :<C-U>call oumg#set_iskeyword() <bar>
-			\ call oumg#jump_file_title("silent edit", oumg#parse_file_title(expand('<cword>'))) <bar>
-			\ call oumg#restore_iskeyword() <CR>
+nnoremap <silent> mg :<C-U> call oumg#jump_target() <CR>
 
 " plugin entrance for command line mode
 command! -nargs=* -complete=file E      :call oumg#jump_file_title("e"     , oumg#parse_file_title(<q-args>))
