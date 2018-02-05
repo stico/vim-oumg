@@ -23,27 +23,41 @@
 " Pattern:
 " ~<Title>@<File>	" '~' is optional, File could have relative path or file extension (default is '.txt')
 "
-" Sample:
-" ../README.md		" relative path
-" @../README.md		" relative path, with @
-" 你好vimrc测试一下	" among Chinese
-" @vimrc:		" heading/tailing special char, and with @
-" (@vimrc)		" heading/tailing special char, inside bracket
-" @~/.vimrc,		" heading/tailing special char, with ~tilde@bash
-" (ss)vimrc)		" heading/tailing special char, ) in heading part
-" @$MY_DCC/vim/vim.txt,	" heading/tailing special char, including env var
-" @$HOME/.vimrc		" including env var
-" python		" tag
-" python21398		" not exist
+" TestCase: 
+" python				" file: tag
+" @python				" @file: tag
+" overview@http				" title@file: use tag, without ~
+" ~overview@http			" title@file: use tag
+" overview@$MY_DCC/python/python.txt	" title@file: use path, without ~
+" ~overview@$MY_DCC/python/python.txt	" title@file: use path
+" ~overview				" title NOT exist
 "
-" ~overview@http
-" ~Lang_Pickling_Unpickling
-" ~Lang_Pickling_Unpickling@python
-" ~Lang_Pickling_Unpickling2@python2
-" ~Lang_Pickling_Unpickling@$MY_DCC/python/python.txt
-" overview@$MY_DCC/python/python.txt			" TODO: seems @ still NOT included in expand ('<cword>') after 'set iskeyword+=@'
+" @$HOME/.vimrc				" including env var
+" ../README.md				" relative path
+" @../README.md				" relative path, with @
 "
-" http://dev.yypm.com/web/?post=posts/standard/interfaces/yy_short_video/sv_soda.md	" url with special chars which can NOT handle by 'netrw-gx' 
+" ~overview@python2			" file NOT exist
+" @python21398				" @file: NOT exist
+" ~overview2@python2			" both title and file NOT exist
+"
+" @vimrc:				" heading/tailing special char, and with @
+" (@vimrc)				" heading/tailing special char, inside bracket
+" (ss)vimrc)				" heading/tailing special char, ) in heading part
+" @~/.vimrc,				" heading/tailing special char, with ~tilde@bash
+" @$MY_DCC/vim/vim.txt,			" heading/tailing special char, including env var
+"
+": 表情@tv,aaa				" title contains CN
+"：表情@tv，aaa				" title contains CN, boundary are also CN char
+"：topic-话题@tv,aaa			" title contains CN & EN
+":~1801_zaodian_播放入口@tv		" title contains CN & EN & NUM
+" 你好vimrc测试一下			" among CN chars
+":~表情@tv,aaa				" with EN boundary
+"：~1801_zaodian_播放入口@tv，你好	" with CN boundary
+"
+" http://dev.yypm.com/web/?post=posts/standard/interfaces/yy_short_video/sv_soda.md		" url with special chars which can NOT handle by 'netrw-gx' 
+" https://dev.yypm.com/web/?post=posts/standard/interfaces/yy_short_video/sv_soda.md		" https
+" [md link](http://dev.yypm.com/web/?post=posts/standard/interfaces/yy_short_video/sv_soda.md)	" markdown link syntax
+" [URL@web](http://dev.yypm.com/web/?post=posts/standard/interfaces/yy_short_video/sv_soda.md)	" should open URL@web when cursor is there
 "
 " TODO: support layered syntax like: ~limit~performance@mysql 
 "
@@ -88,7 +102,7 @@ function! oumg#find_file(str)
 	let root_expanded = expand('/')
 	let base_expanded = expand(base)
 	let home_expanded = expand('$HOME')
-	if ( base_expanded == home_expanded || base_expanded == root_expanded) 
+	if (base_expanded == home_expanded || base_expanded == root_expanded) 
 		echo 'ERROR: base should NOT be $HOME (~/) or root (/)'
 		return ""
 	endif
@@ -108,7 +122,7 @@ function! oumg#find_file(str)
 		endif
 	endfor
 
-	" otherwise return empty string
+	" otherwise return empty string. SHOULD NOT echo WARN here, since here is just a 'try'
 	return ""
 endfunction
 
@@ -221,76 +235,136 @@ function! oumg#set_iskeyword()
 	set iskeyword+=@-@
 endfunction
 
-function! oumg#jump_target()
+function! oumg#match_http_addr()
+	"let matched_http_addr = matchstr(getline("."), '[a-z]*:\/\/[^ >,;]*')
+	"let matched_http_addr = matchstr(getline("."), '[a-z]*:\/\/[^[:blank:]]*')
+	return matchstr(getline("."), 'http[s]\?:\/\/[^[:blank:])]*')			" ')' actually leagal in URL@web, but here need deal url in markdown syntax 
+endfunction
+
+function! oumg#match_oumg_addr()
+	let cur_WORD = expand('<cWORD>')
+
+	" 1. format: ~<title>@<file> 
+	"    sample1: ~表情@tv,aaa
+	"    sample2:~1801_zaodian_播放入口@tv
+	"    sample2：~1801_zaodian_播放入口@tv
+	let matched_addr = matchstr(cur_WORD, '\~.*@[[:alnum:]@~/-_\.]*')
+	if (!empty(matched_addr))
+		return matched_addr
+	endif
 	
-	" TODO: open based on filetype
+	" 2. format: <title>@<file> 
+	"    sample1: 表情@tv,aaa		" title contains CN
+	"    sample2：表情@tv，aaa		" title contains CN, boundary are also CN char
+	"    sample3：topic-话题@tv,aaa		" title contains CN & EN
+	let matched_addr = matchstr(cur_WORD, '[^[:space:]：，。]*@[[:alnum:]@~/-_\.]*')
+	if (!empty(matched_addr))
+		return matched_addr
+	endif
 	
-	"let matched_http_str = matchstr(getline("."), '[a-z]*:\/\/[^ >,;]*')
-	let matched_http_str = matchstr(getline("."), '[a-z]*:\/\/[^[:blank:]]*')
-	if(!empty(matched_http_str))
-		" Open as a http url. NOTE: 'netrw-gx' can NOT support url with char like ?/#, so not really useful
-		silent exec "!open ".shellescape(matched_http_str, 1)
-	else
-		" Open as oumg syntax
-		call oumg#set_iskeyword()
-		call oumg#jump_file_title("silent edit", oumg#parse_file_title(expand('<cword>')))
-		call oumg#restore_iskeyword()
+	" 3. format: ~<title>
+	"    sample: (need goto some file which have it) ~1801_zaodian_播放入口
+	let matched_addr = matchstr(cur_WORD, '\~[^[:space:]：，。]*')
+	if (!empty(matched_addr))
+		return matched_addr
+	endif
+
+	" (last): use the old/simple '<cword>'
+	call oumg#set_iskeyword()		" need set keyword to get the wanted string
+	let c_word = expand('<cword>')
+	call oumg#restore_iskeyword()		" restore the original
+	return c_word
+
+endfunction
+
+function! oumg#mg()
+	
+	" NOTE: 'netrw-gx' can NOT support url with char like ?/#, so not really useful, here handles http url to support those chars
+	
+	" Find target addresses
+	let matched_http_addr = oumg#match_http_addr()
+	let matched_oumg_addr = oumg#match_oumg_addr()
+
+	" Open as http url if <cword> is NOT a oumg link, and it is a http url
+	if(match(matched_oumg_addr, '[~@]') < 0 && !empty(matched_http_addr))	
+		silent exec "!open ".shellescape(matched_http_addr, 1)
+
+	" Open as oumg addr
+	else								
+		try 
+			call oumg#jump_file_title("silent edit", matched_oumg_addr)
+		catch /.*/ 
+			echo "Get Exception in oumg#mg: " v:exception 
+		endtry 
 	endif
 endfunction
 
-function! oumg#jump_file_title(cmd, location)
-	if(a:location["file"] == expand("%"))
-		let title_pattern_loose = "^\\c\\t*" . a:location["title"]
-		let title_pattern_strict = "^\\c\\t*" . a:location["title"] . "\\s*$"
+function! oumg#jump_file_title(cmd, file_title_str)
+	let location = oumg#parse_file_title(a:file_title_str)
 
-		" add a entry jump list so could use jump histoy
-		normal m'
+	" Jump inside current file
+	if(location["file"] == expand("%"))
+		call oumg#jump_title(location["title"])
 
-		" find and goto title
-		if search(title_pattern_strict, 'cw') > 0
-			let @/ = title_pattern_strict
-			"normal n	" NOT need, as search() already did
-			normal zz
-		elseif search(title_pattern_loose, 'cw') > 0
-			let @/ = title_pattern_loose
-			"normal n	" NOT need, as search() already did
-			normal zz
-		else
-			echo "WARN: NO title pattern found: " . title_pattern_loose
-		endif
+	" jump in another file
 	else
-		"let file = readfile(expand("xxx")) " read file
-		"for line in file
-		"let match = matchstr(line, '.*shouldmatch') " regex match
-		"if(!empty(match))
-		"endif
-		"endfor
+		" Check file existence
+		if ! filereadable(location["file"])
+			echo "WARN: file NOT found for: " . substitute(a:file_title_str, '.*@', '', 'g') 
+			return
+		endif
 		
-		"execute a:cmd . ' +/\\c^\\t*' . a:location["title"] . ' ' . a:location["file"]
-		
-		" search pattern should not contain '/', otherwise gets error 'not an editor command', use '\V' (Very No Magin) also complains, since '/' means 'search'
-		let search_pattern_loose = ' +/\\c^\\t*' . substitute(a:location["title"], '/', '.', 'g') 
-		execute a:cmd . search_pattern_loose . ' ' . a:location["file"]
+		execute a:cmd . ' ' . location["file"]
+		if (!empty(location["title"]))
+			call oumg#jump_title(location["title"])
+		endif
 		normal zz
 	endif
 endfunction
 
-function! oumg#gen_pattern_outline(level)
+function! oumg#jump_title(title)
+	" Solution I: jump with simple patter
+	" search pattern should not contain '/', otherwise gets error 'not an editor command', use '\V' (Very No Magin) also complains, since '/' means 'search'
+	"let search_pattern_loose = ' +/\\c^\\t*' . substitute(location["title"], '/', '.', 'g') 
+	"execute a:cmd . search_pattern_loose . ' ' . location["file"]
+	
+	" Solution II: find real title first, then simple a starting heading
+	let title_pattern_loose = "^\\c\\t*" . a:title
+	let title_pattern_strict = "^\\c\\t*" . a:title . "\\s*$"
+
+	" add a entry jump list so could use jump histoy
+	normal m'
+
+	" find and goto title
+	if search(title_pattern_strict, 'cw') > 0
+		let @/ = title_pattern_strict
+		"normal n	" NOT need, as search() already did
+		normal zz
+	elseif search(title_pattern_loose, 'cw') > 0
+		let @/ = title_pattern_loose
+		"normal n	" NOT need, as search() already did
+		normal zz
+	else
+		echo "WARN: NO title pattern found: " . title_pattern_loose
+	endif
+endfunction
+
+function! oumg#outline_pattern(level)
 	"return "^\t*[^ \t]\+$"							" NOT work, why?
 	"return "^\t*\S\+\s*$"							" NOT work, why?
 	"return "^[[:space:]]*[-_\.[:alnum:]]\+[[:space:]]*$"			" NOT work, since vim not fully support POSIX regex syntax
 	"return "^\t*[^ \t][^ \t]*$", flags) > 0				" works, but all Chinese becomes outline
 	"return "^\t*[-_a-z0-9\/\.][-_a-z0-9\/\.]*[\t ]*$"			" works, but a bit strict, chinese all excluded
 	"return '^\t*[^ \t\r\n\v\f]\{2,30}[ \t\r\n\v\f]*$'			" works, include chinese
-	"return '^\t\{0,' . a:level . '}[^ \t\r\n\v\f]\{2,20}[ \t\r\n\v\f]*$'	" almost works, support levels, Chinese char also counts 1 (NOT 2), but some 1st level head can NOT be matched (e.g. overview), why?
-	return '^\t\{0,' . a:level . '}[^[:space:]]\{2,20}[[:space:]]*$'
+	"return '^\t\{0,' . a:level . '}[^ \t\r\n\v\f]\{2,25}[ \t\r\n\v\f]*$'	" almost works, support levels, Chinese char also counts 1 (NOT 2), but some 1st level head can NOT be matched (e.g. overview), why?
+	return '^\t\{0,' . a:level . '}[^[:space:]]\{2,35}[[:space:]]*$'
 endfunction
 
 function! oumg#mo_common(level)
 	let flags = 'cW'
 	let lwidth = 25
 	let file = expand('%')
-	let pattern = oumg#gen_pattern_outline(a:level)
+	let pattern = oumg#outline_pattern(a:level)
 
 	while search(pattern, flags) > 0
 		let flags = 'W'
@@ -465,18 +539,12 @@ augroup quickfix_reflector
 	autocmd BufReadPost quickfix nested :call oumg#on_qf_init()
 augroup END
 
-" Entrance I: outline
-nnoremap <silent> mo :<C-U>call oumg#mo(v:count)<CR>
-
-" Entrance II: my go, for more: see Get_Valid_STR_Solution_I and Get_Valid_STR_Solution_II
-nnoremap <silent> mg :<C-U> call oumg#jump_target() <CR>
-
 " plugin entrance for command line mode
-command! -nargs=* -complete=file E      :call oumg#jump_file_title("e"     , oumg#parse_file_title(<q-args>))
-command! -nargs=* -complete=file New    :call oumg#jump_file_title("new"   , oumg#parse_file_title(<q-args>))
-command! -nargs=* -complete=file Vnew   :call oumg#jump_file_title("vnew"  , oumg#parse_file_title(<q-args>))
-command! -nargs=* -complete=file Tabnew :call oumg#jump_file_title("tabnew", oumg#parse_file_title(<q-args>))
-command! -nargs=* -complete=file Vi     :call oumg#jump_file_title("tabnew", oumg#parse_file_title(<q-args>))
+command! -nargs=* -complete=file E      :call oumg#jump_file_title("e"     , <q-args>)
+command! -nargs=* -complete=file New    :call oumg#jump_file_title("new"   , <q-args>)
+command! -nargs=* -complete=file Vnew   :call oumg#jump_file_title("vnew"  , <q-args>)
+command! -nargs=* -complete=file Tabnew :call oumg#jump_file_title("tabnew", <q-args>)
+command! -nargs=* -complete=file Vi     :call oumg#jump_file_title("tabnew", <q-args>)
 
 " *hack* buidlin command via command line abbr
 :cabbrev e      <c-r>=(getcmdtype()==':' && getcmdpos()==1 ? 'E'      : 'e'     )<CR>
@@ -485,6 +553,11 @@ command! -nargs=* -complete=file Vi     :call oumg#jump_file_title("tabnew", oum
 :cabbrev vi     <c-r>=(getcmdtype()==':' && getcmdpos()==1 ? 'Vi'     : 'vi'    )<CR>
 :cabbrev tabnew <c-r>=(getcmdtype()==':' && getcmdpos()==1 ? 'Tabnew' : 'tabnew')<CR>
 
+" Entrance I: outline
+nnoremap <silent> mo :<C-U>call oumg#mo(v:count)<CR>
+
+" Entrance II: my go, for more: see Get_Valid_STR_Solution_I and Get_Valid_STR_Solution_II
+nnoremap <silent> mg :<C-U> call oumg#mg() <CR>
 
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
