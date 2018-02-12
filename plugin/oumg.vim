@@ -69,9 +69,9 @@
 "Material Loc	<sub folder>
 
 " START: script starts here
-"if exists("g:loaded_vim_oumg") || &cp || v:version < 700
-"	finish
-"endif
+if exists("g:loaded_vim_oumg") || &cp || v:version < 700
+	finish
+endif
 let g:loaded_vim_oumg = 1
 let g:oumg_temp_iskeyword_value=&iskeyword
 
@@ -335,18 +335,28 @@ function! oumg#jump_title(title)
 	" add a entry jump list so could use jump histoy
 	normal m'
 
-	" find and goto title
-	if search(title_pattern_strict, 'cw') > 0
-		let @/ = title_pattern_strict
-		"normal n	" NOT need, as search() already did
+	" find and goto title, in strict way
+	let target_line = search(title_pattern_strict, 'cw')
+	if target_line > 0
+		call cursor(target_line, 1)
+		"let @/ = title_pattern_strict		" Deprecated this, since poluted the search history
+		"normal n				" NOT need, as search() already did
 		normal zz
-	elseif search(title_pattern_loose, 'cw') > 0
-		let @/ = title_pattern_loose
-		"normal n	" NOT need, as search() already did
-		normal zz
-	else
-		echo "WARN: NO title pattern found: " . title_pattern_loose
+		return
 	endif
+
+	" find and goto title, in loose way
+	let target_line = search(title_pattern_loose, 'cw')
+	if target_line  > 0
+		call cursor(target_line, 1)
+		"let @/ = title_pattern_loose		" Deprecated this, since poluted the search history
+		"normal n				" NOT need, as search() already did
+		normal zz
+		return
+	endif
+
+	" not title found, give a warn
+	echo "WARN: NO title pattern found: " . title_pattern_loose
 endfunction
 
 function! oumg#outline_pattern(level)
