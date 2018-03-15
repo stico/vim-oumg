@@ -56,9 +56,11 @@
 "
 " http://dev.yypm.com/web/?post=posts/standard/interfaces/yy_short_video/sv_soda.md		" url with special chars which can NOT handle by 'netrw-gx' 
 " https://dev.yypm.com/web/?post=posts/standard/interfaces/yy_short_video/sv_soda.md		" https
+" http://dev.yypm.com/web/?post=posts/standard/interfaces/yy_short_video/sv_soda.md，测试	" http
 " [md link](http://dev.yypm.com/web/?post=posts/standard/interfaces/yy_short_video/sv_soda.md)	" markdown link syntax
 " [URL@web](http://dev.yypm.com/web/?post=posts/standard/interfaces/yy_short_video/sv_soda.md)	" should open URL@web when cursor is there
 "
+" TODO: why this URL NOT work??? (url is cut short): https://docs.google.com/spreadsheets/d/1Xe3i-fZeki3GqXIOdJfhi0HgXQZK-z6kNC9_kaMFJT4/edit#gid=29158369
 " TODO: support layered syntax like: ~limit~performance@mysql 
 "
 " TODO_Highlight:
@@ -69,9 +71,9 @@
 "Material Loc	<sub folder>
 
 " START: script starts here
-if exists("g:loaded_vim_oumg") || &cp || v:version < 700
-	finish
-endif
+"if exists("g:loaded_vim_oumg") || &cp || v:version < 700
+"	finish
+"endif
 let g:loaded_vim_oumg = 1
 let g:oumg_temp_iskeyword_value=&iskeyword
 
@@ -238,7 +240,10 @@ endfunction
 function! oumg#match_http_addr()
 	"let matched_http_addr = matchstr(getline("."), '[a-z]*:\/\/[^ >,;]*')
 	"let matched_http_addr = matchstr(getline("."), '[a-z]*:\/\/[^[:blank:]]*')
-	return matchstr(getline("."), 'http[s]\?:\/\/[^[:blank:])]*')			" ')' actually leagal in URL@web, but here need deal url in markdown syntax 
+	
+	" ')' actually leagal in URL@web, but here need deal url in markdown syntax 
+	"return matchstr(getline("."), 'http[s]\?:\/\/[^[:blank:])]*')			
+	return matchstr(getline("."), 'http[s]\?:\/\/[^\u0256-\uFFFF \t)[:space:]]*')
 endfunction
 
 function! oumg#match_oumg_addr()
@@ -247,8 +252,10 @@ function! oumg#match_oumg_addr()
 	" 1. format: ~<title>@<file> 
 	"    sample1: ~表情@tv,aaa
 	"    sample2:~1801_zaodian_播放入口@tv
-	"    sample2：~1801_zaodian_播放入口@tv
-	let matched_addr = matchstr(cur_WORD, '\~.*@[[:alnum:]@~/-_\.]*')
+	"    sample3：~1801_zaodian_播放入口@tv
+	"    sample4：~1801_zaodian_播放入口@$MY_DCD/tinyvideo/tinyvideo.txt		" need '/','\.','\$'
+	"    sample4：~1801_zaodian_播放入口@~/documents/DCD/tinyvideo/tinyvideo.txt	" need '/','\.','~'
+	let matched_addr = matchstr(cur_WORD, '\~.*@[[:alnum:]~/-_\.\$]*')
 	if (!empty(matched_addr))
 		return matched_addr
 	endif
@@ -263,8 +270,9 @@ function! oumg#match_oumg_addr()
 	endif
 	
 	" 3. format: ~<title>
-	"    sample: (need goto some file which have it) ~1801_zaodian_播放入口
-	let matched_addr = matchstr(cur_WORD, '\~[^[:space:]：，。]*')
+	"    sample1: (need goto @db) (~cross_join)
+	"    sample2: (need goto @tv) ~1801_zaodian_播放入口
+	let matched_addr = matchstr(cur_WORD, '\~[^[:space:]：，。)>\],\.]*')
 	if (!empty(matched_addr))
 		return matched_addr
 	endif
