@@ -60,7 +60,9 @@
 " [md link](http://dev.yypm.com/web/?post=posts/standard/interfaces/yy_short_video/sv_soda.md)	" markdown link syntax
 " [URL@web](http://dev.yypm.com/web/?post=posts/standard/interfaces/yy_short_video/sv_soda.md)	" should open URL@web when cursor is there
 "
-" TODO: why this URL NOT work??? (url is cut short): https://docs.google.com/spreadsheets/d/1Xe3i-fZeki3GqXIOdJfhi0HgXQZK-z6kNC9_kaMFJT4/edit#gid=29158369
+" TODO: why this URL NOT work??? (url is cut short): 
+" https://docs.google.com/spreadsheets/d/1Xe3i-fZeki3GqXIOdJfhi0HgXQZK-z6kNC9_kaMFJT4/edit#gid=29158369
+" https://docs.google.com/spreadsheets/d/1zZMPVfo0b_QkEBlj-p35KvDh6Nyjc0KFZN3rG2-WZ9E/edit#gid=974146624
 " TODO: support layered syntax like: ~limit~performance@mysql 
 "
 " TODO_Highlight:
@@ -518,7 +520,7 @@ function! oumg#on_qf_init()
 		return
 	endif
 
-	" use buffer list to check, seem no better way after long investigation
+	" use buffer list to check, seem no better way after long investigation: location_VS_quickfix@vim
 	silent let buffer_list = oumg#buffer_list_str()
 	let pattern = bufnr('%') . '.*"\[Quickfix List\]"'
 	if match(buffer_list, pattern) < 0
@@ -536,9 +538,17 @@ function! oumg#on_qf_write()
 		return
 	endif
 
-	" filter those deleted lines
-	let entries = getqflist()		" qf entries (original, before edit)
-	call filter(entries, 'match(getline(1,''$''), ''^'' . bufname(v:val.bufnr) . ''|'' . v:val.lnum . ''|.*$'' ) >= 0')
+	" filter those deleted lines. 
+	" NOTE: 
+	"	expand('#' . v:val.bufnr) is just the file path shows in :cw window: A) filename or relative path if file is under current ROOT. B) otherwise absolute path
+	" DESC:
+	"	getline(1, '$')		return lines as list ([x, y, z, ...]) of current buffer (NOT content on disk, so un-writen deleted lines is NOT listed)
+	"	getqflist()		return dictionary of items (keys like file/line/column/etc, :h getqflist() for detail)
+	"	bufname()		will get what you see in :ls, which is fullpath
+	let entries = getqflist()	" qf entries (original, before edit)
+	"call filter(entries, 'match(getline(1,''$''), ''^'' . bufname(v:val.bufnr) . ''|'' . v:val.lnum . ''|.*$'' ) >= 0')		" too strict since used '^'
+	"call filter(entries, 'match(getline(1,''$''), expand(''#'' . v:val.bufnr . '':t'') . ''|'' . v:val.lnum . ''|.*$'' ) >= 0')	" Only use filename, NOT accurate enough: if diff file with same name (in diff path), the delete will NOT reserved
+	call filter(entries, 'match(getline(1,''$''), expand(''#'' . v:val.bufnr) . ''|'' . v:val.lnum . ''|.*$'' ) >= 0')		" WORKS perfectly
 
 	" set backup to qf list
 	call setqflist(entries, 'r')
