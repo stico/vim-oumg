@@ -62,6 +62,12 @@
 " https://docs.google.com/spreadsheets/d/1Xe3i-fZeki3GqXIOdJfhi0HgXQZK-z6kNC9_kaMFJT4/edit#gid=29158369
 " https://docs.google.com/spreadsheets/d/1zZMPVfo0b_QkEBlj-p35KvDh6Nyjc0KFZN3rG2-WZ9E/edit#gid=974146624
 "
+" 'https://zh.wikipedia.org/wiki/ISO_3166-1'			" url within quotes
+" "https://zh.wikipedia.org/wiki/ISO_3166-1"			" url within quotes
+" [https://zh.wikipedia.org/wiki/ISO_3166-1]			" url within brace
+" (https://zh.wikipedia.org/wiki/ISO_3166-1)			" url within brace
+" {https://zh.wikipedia.org/wiki/ISO_3166-1}			" url within brace
+"
 " TODO: [URL@web](http://dev.yypm.com/web/?post=posts/standard/interfaces/yy_short_video/sv_soda.md)	" should open URL@web when cursor is there
 " TODO: support layered syntax like: ~limit~performance@mysql 
 "
@@ -73,9 +79,9 @@
 "Material Loc	<sub folder>
 
 " START: script starts here
-"if exists("g:loaded_vim_oumg") || &cp || v:version < 700
-"	finish
-"endif
+if exists("g:loaded_vim_oumg") || &cp || v:version < 700
+	finish
+endif
 let g:loaded_vim_oumg = 1
 let g:oumg_temp_iskeyword_value=&iskeyword
 
@@ -249,10 +255,11 @@ function! oumg#match_http_addr()
 	" 'k' will NOT match, since it is also \u212A
 	"return matchstr(getline("."), 'http[s]\?:\/\/[^\u0256-\uFFFF\t)[:space:]]*')
 
-	" DEBUG: echo matchstr("https://zh.wikipedia.org/wiki/ISO_3166-1", 'http[s]\?:\/\/[^\u0256-\uFFFF \t)[:space:]]*')
 	" NOTE: option ":set ignorecase" will effect matchstr
-	" NOTE: "k" matcheds both "\u006B" and "\u212A" : http://www.fileformat.info/info/unicode/char/212a/index.htm
-	return matchstr(getline("."), 'http[s]\?:\/\/[^\u00FF-\u012F\u0131-\u2129\u212b-\uFFFF\t)[:space:]]*')
+	" NOTE: \u0027 is ' (single quote), since not find other way to escape
+	" NOTE: "k"/"i" also matcheds "\u212A" / "\u0130", so need exclude them. See multiple_match@regex for more
+	" BACKUP: return matchstr(getline("."), 'http[s]\?:\/\/[^\u00FF-\u012F\u0131-\u2129\u212b-\uFFFF\t)[:space:]]*')		" work version, not excluding )]}'"
+	return matchstr(getline("."), 'http[s]\?:\/\/[^\u0027\u00FF-\u012F\u0131-\u2129\u212b-\uFFFF\t)\]}"[:space:]]*')
 endfunction
 
 function! oumg#match_oumg_addr()
@@ -505,6 +512,7 @@ function! oumg#mo(count)
 	call setpos('.', save_cursor)
 	vertical lopen
 	execute "vertical resize " . lwidth
+	execute "set nowrap"
 
 	" hide filename and line number in quickfix window, not sure how it works yet.
 	set conceallevel=2 concealcursor=nc
@@ -589,7 +597,7 @@ command! -nargs=* -complete=file Vi     :call oumg#jump_file_title("tabnew", <q-
 :cabbrev tabnew <c-r>=(getcmdtype()==':' && getcmdpos()==1 ? 'Tabnew' : 'tabnew')<CR>
 
 " Entrance I: outline
-nnoremap <silent> mo :<C-U>call oumg#mo(v:count)<CR>
+nnoremap <silent> mo :<C-U>call oumg#mo(v:count)<CR>/
 
 " Entrance II: my go, for more: see Get_Valid_STR_Solution_I and Get_Valid_STR_Solution_II
 nnoremap <silent> mg :<C-U> call oumg#mg() <CR>
