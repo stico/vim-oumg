@@ -54,6 +54,7 @@
 ":~表情@tv,aaa				" with EN boundary
 "：~1801_zaodian_播放入口@tv，你好	" with CN boundary
 "
+" http://ido.sysop.duowan.com/admin/faq/question/view.jsp?from=list&id=6020		" url with &
 " https://zh.wikipedia.org/wiki/ISO_3166-1			" basic
 " 'https://zh.wikipedia.org/wiki/ISO_3166-1'			" url within quotes
 " "https://zh.wikipedia.org/wiki/ISO_3166-1"			" url within quotes
@@ -258,9 +259,9 @@ function! oumg#match_http_addr()
 	" NOTE: option ":set ignorecase" will effect matchstr
 	" NOTE: \u0027 is ' (single quote), since not find other way to escape
 	" NOTE: "k"/"i" also matcheds "\u212A" / "\u0130", so need exclude them. See multiple_match@regex for more
-	" BACKUP: matchstr(getline("."), 'http[s]\?:\/\/[^\u00FF-\u012F\u0131-\u2129\u212b-\uFFFF\t)[:space:]]*')			" work version, not excluding )]'"
-	" BACKUP: matchstr(getline("."), 'http[s]\?:\/\/[^\u0027\u00FF-\u012F\u0131-\u2129\u212b-\uFFFF\t)\]}"[:space:]]*')		" work version, BUT excluded }, URL with json need this
-	" BACKUP: matchstr(getline("."), '{\?http[s]\?:\/\/[^\u0027\u00FF-\u012F\u0131-\u2129\u212b-\uFFFF\t)\]"[:space:]]*')		" work version, include }, and including embracing {} (removed later on)
+	" BACKUP1: matchstr(getline("."), 'http[s]\?:\/\/[^\u00FF-\u012F\u0131-\u2129\u212b-\uFFFF\t)[:space:]]*')			" work version, BUT NOT excluding )]'"
+	" BACKUP2: matchstr(getline("."), 'http[s]\?:\/\/[^\u0027\u00FF-\u012F\u0131-\u2129\u212b-\uFFFF\t)\]}"[:space:]]*')		" work version, BUT excluded }, URL with json need this
+	" BACKUP3: matchstr(getline("."), '{\?http[s]\?:\/\/[^\u0027\u00FF-\u012F\u0131-\u2129\u212b-\uFFFF\t)\]"[:space:]]*')		" work version, include }, and including embracing {} (removed later on)
 	let matched_str = matchstr(getline("."), '{\?http[s]\?:\/\/[^\u0027\u00FF-\u012F\u0131-\u2129\u212b-\uFFFF\t)\]"[:space:]]*')
 
 	" special case: url in brace, the matchstr() need include {}, because
@@ -331,9 +332,10 @@ function! oumg#mg()
 		"silent exec "!".open_cmd." ".matched_http_addr				" NOT work for url with # (will be removed by shell), { (will be encoded), % (will replace with filename)
 		"silent exec "!".open_cmd." ".matched_http_addr				" # vanished, % replaced with filename
 		"silent exec "!".open_cmd." '".matched_http_addr."'"			" # vanished, % replaced with filename
-		
-		"silent exec "!".open_cmd." ".shellescape(matched_http_addr, 1)		" WORK version. NOT quote url, not sure if this will cause problem
-		silent exec "!".open_cmd." '".shellescape(matched_http_addr, 1)."'"
+		"silent exec "!".open_cmd." '".shellescape(matched_http_addr, 1)."'"	" NOT work, the url actually quoted twice like ''url''
+
+		" should NO comment on exec line
+		silent exec "!".open_cmd." ".shellescape(matched_http_addr, 1)
 
 	" Open as oumg addr
 	else								
