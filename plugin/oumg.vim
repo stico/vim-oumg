@@ -24,35 +24,36 @@
 " ~<Title>@<File>	" '~' is optional, File could have relative path or file extension (default is '.txt')
 "
 " TestCase: 
-" python				" file: tag
-" @python				" @file: tag
-" overview@http				" title@file: use tag, without ~
-" ~overview@http			" title@file: use tag
-" overview@$MY_DCC/python/python.txt	" title@file: use path, without ~
-" ~overview@$MY_DCC/python/python.txt	" title@file: use path
-" ~overview				" title NOT exist
+" python								" file: tag
+" @python								" @file: tag
+" overview@http								" title@file: use tag, without ~
+" ~overview@http							" title@file: use tag
+" overview@$MY_DCC/python/python.txt					" title@file: use path, without ~
+" ~overview@$MY_DCC/python/python.txt					" title@file: use path
+" ~overview								" title NOT exist
 "
-" @$HOME/.vimrc				" including env var
-" ../README.md				" relative path
-" @../README.md				" relative path, with @
+" @$HOME/.vimrc								" including env var
+" ../README.md								" relative path
+" @../README.md								" relative path, with @
 "
-" ~overview@python2			" file NOT exist
-" @python21398				" @file: NOT exist
-" ~overview2@python2			" both title and file NOT exist
+" ~overview@python2							" file NOT exist
+" @python21398								" @file: NOT exist
+" ~overview2@python2							" both title and file NOT exist
 "
-" @vimrc:				" heading/tailing special char, and with @
-" (@vimrc)				" heading/tailing special char, inside bracket
-" (ss)vimrc)				" heading/tailing special char, ) in heading part
-" @~/.vimrc,				" heading/tailing special char, with ~tilde@bash
-" @$MY_DCC/vim/vim.txt,			" heading/tailing special char, including env var
+" @vimrc:								" heading/tailing special char, and with @
+" (@vimrc)								" heading/tailing special char, inside bracket
+" (ss)vimrc)								" heading/tailing special char, ) in heading part
+" @~/.vimrc,								" heading/tailing special char, with ~tilde@bash
+" @$MY_DCC/vim/vim.txt,							" heading/tailing special char, including env var
+" $MY_DCD/biugo/budget_cost/2020-04_月度费用与预算校对/overview.txt
 "
-": 表情@tv,aaa				" title contains CN
-"：表情@tv，aaa				" title contains CN, boundary are also CN char
-"：topic-话题@tv,aaa			" title contains CN & EN
-":~1801_zaodian_播放入口@tv		" title contains CN & EN & NUM
-" 你好vimrc测试一下			" among CN chars
-":~表情@tv,aaa				" with EN boundary
-"：~1801_zaodian_播放入口@tv，你好	" with CN boundary
+": 表情@tv,aaa								" title contains CN
+"：表情@tv，aaa								" title contains CN, boundary are also CN char
+"：topic-话题@tv,aaa							" title contains CN & EN
+":~1801_zaodian_播放入口@tv						" title contains CN & EN & NUM
+" 你好vimrc测试一下							" among CN chars
+":~表情@tv,aaa								" with EN boundary
+"：~1801_zaodian_播放入口@tv，你好					" with CN boundary
 "
 " http://ido.sysop.duowan.com/admin/faq/question/view.jsp?from=list&id=6020		" url with &
 " https://zh.wikipedia.org/wiki/ISO_3166-1			" basic
@@ -307,7 +308,8 @@ function! oumg#match_oumg_addr()
 
 	" (last): use the old/simple '<cword>'
 	call oumg#set_iskeyword()		" need set keyword to get the wanted string
-	let c_word = expand('<cword>')
+	"let c_word = expand('<cword>')		" this could avoid includes useless extra chars, but also excluded CN chars
+	let c_word = expand('<cWORD>')		" use WORD to include CN chars
 	call oumg#restore_iskeyword()		" restore the original
 	return c_word
 
