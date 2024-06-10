@@ -24,6 +24,7 @@
 " ~<Title>@<File>	" '~' is optional, File could have relative path or file extension (default is '.txt')
 "
 " TestCase: 
+" File: unit_test.vim
 " python								" file: tag
 " @python								" @file: tag
 " overview@http								" title@file: use tag, without ~
@@ -55,23 +56,8 @@
 ":~表情@tv,aaa								" with EN boundary
 "：~1801_zaodian_播放入口@tv，你好					" with CN boundary
 "
-" http://ido.sysop.duowan.com/admin/faq/question/view.jsp?from=list&id=6020		" url with &
-" https://zh.wikipedia.org/wiki/ISO_3166-1			" basic
-" 'https://zh.wikipedia.org/wiki/ISO_3166-1'			" url within quotes
-" "https://zh.wikipedia.org/wiki/ISO_3166-1"			" url within quotes
-" [https://zh.wikipedia.org/wiki/ISO_3166-1]			" url within brace
-" (https://zh.wikipedia.org/wiki/ISO_3166-1)			" url within brace
-" {https://zh.wikipedia.org/wiki/ISO_3166-1}			" url within brace
-" http://dev.yypm.com/web/?post=posts/standard/interfaces/yy_short_video/sv_soda.md				" url with special chars which can NOT handle by 'netrw-gx' 
-" https://dev.yypm.com/web/?post=posts/standard/interfaces/yy_short_video/sv_soda.md				" https
-" http://dev.yypm.com/web/?post=posts/standard/interfaces/yy_short_video/sv_soda.md，测试			" http
-" [md link](http://dev.yypm.com/web/?post=posts/standard/interfaces/yy_short_video/sv_soda.md)			" markdown link syntax
-" https://docs.google.com/spreadsheets/d/1Xe3i-fZeki3GqXIOdJfhi0HgXQZK-z6kNC9_kaMFJT4/edit#gid=29158369		" with #-_ in url
-" https://docs.google.com/spreadsheets/d/1zZMPVfo0b_QkEBlj-p35KvDh6Nyjc0KFZN3rG2-WZ9E/edit#gid=974146624
-" http://monitor.sysop.duowan.com/statics/frontend/build/1.0.0/#/portal/metrics/server/{%22host%22%3A%22%22%2C%22idc%22%3A%22%22%2C%22isp%22%3A%22%22%2C%22version%22%3A%22%22%2C%22topic%22%3A%22%22%2C%22uri%22%3A%22http%2Fshare%2FgetShareRecommendList%22%2C%22tag%22%3A%22s%22%2C%22appName%22%3A%22biugo%22%2C%22serviceName%22%3A%22biugo-recommend%22%2C%22relation%22%3A%22package%22%2C%22quickTime%22%3A168%2C%22contrast%22%3A0%2C%22parentUri%22%3A%22http%2Fshare%2FgetShareRecommendList%22}		" url with encoded json
-"
-" TODO: [URL@web](http://dev.yypm.com/web/?post=posts/standard/interfaces/yy_short_video/sv_soda.md)	" should open URL@web when cursor is there
 " TODO: support layered syntax like: ~limit~performance@mysql 
+" TODO: [URL@web](http://dev.yypm.com/web/?post=posts/standard/interfaces/yy_short_video/sv_soda.md)	" should open URL@web when cursor is there
 "
 " TODO_Highlight:
 "Title		OumnTitle			:syn match OumnTitle /^##.*/
@@ -248,22 +234,10 @@ function! oumg#set_iskeyword()
 endfunction
 
 function! oumg#match_http_addr()
-	"let matched_http_addr = matchstr(getline("."), '[a-z]*:\/\/[^ >,;]*')
-	"let matched_http_addr = matchstr(getline("."), '[a-z]*:\/\/[^[:blank:]]*')
+
+	" REF: 匹配相关的注释见: test/unit_test.vim
 	
-	" ')' actually leagal in URL@web, but here need deal url in markdown syntax 
-	"return matchstr(getline("."), 'http[s]\?:\/\/[^[:blank:])]*')			
-
-	" 'k' will NOT match, since it is also \u212A
-	"return matchstr(getline("."), 'http[s]\?:\/\/[^\u0256-\uFFFF\t)[:space:]]*')
-
-	" NOTE: option ":set ignorecase" will effect matchstr
-	" NOTE: \u0027 is ' (single quote), since not find other way to escape
-	" NOTE: "k"/"i" also matcheds "\u212A" / "\u0130", so need exclude them. See multiple_match@regex for more
-	" BACKUP1: matchstr(getline("."), 'http[s]\?:\/\/[^\u00FF-\u012F\u0131-\u2129\u212b-\uFFFF\t)[:space:]]*')			" work version, BUT NOT excluding )]'"
-	" BACKUP2: matchstr(getline("."), 'http[s]\?:\/\/[^\u0027\u00FF-\u012F\u0131-\u2129\u212b-\uFFFF\t)\]}"[:space:]]*')		" work version, BUT excluded }, URL with json need this
-	" BACKUP3: matchstr(getline("."), '{\?http[s]\?:\/\/[^\u0027\u00FF-\u012F\u0131-\u2129\u212b-\uFFFF\t)\]"[:space:]]*')		" work version, include }, and including embracing {} (removed later on)
-	let matched_str = matchstr(getline("."), '{\?http[s]\?:\/\/[^\u0027\u00FF-\u012F\u0131-\u2129\u212b-\uFFFF\t)\]"[:space:]]*')
+	let matched_str = matchstr(getline("."), '{\?http[s]\?:\/\/[^\u0027\t)\]"[:space:]\u00FF-\u012F\u212b-\uFFFF]*')
 
 	" special case: url in brace, the matchstr() need include {}, because
 	" url with json might end with }, which need preserve, so only remove
