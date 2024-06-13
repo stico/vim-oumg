@@ -233,6 +233,14 @@ function! oumg#set_iskeyword()
 	set iskeyword+=@-@
 endfunction
 
+"TODO: 有一个URL pattern值得参考: https://github.com/itchyny/vim-highlighturl/
+"function! highlighturl#default_pattern() abort
+"  return  '\v\c%(%(h?ttps?|ftp|file|ssh|git)://|[a-z]+[@][a-z]+[.][a-z]+:)%('
+"        \.'[&:#*@~%_\-=?!+;/0-9a-z]+%(%([.;/?]|[.][.]+)[&:#*@~%_\-=?!+/0-9a-z]+|:\d+|'
+"        \.',%(%(%(h?ttps?|ftp|file|ssh|git)://|[a-z]+[@][a-z]+[.][a-z]+:)@![0-9a-z]+))*|'
+"        \.'\([&:#*@~%_\-=?!+;/.0-9a-z]*\)|\[[&:#*@~%_\-=?!+;/.0-9a-z]*\]|'
+"        \.'\{%([&:#*@~%_\-=?!+;/.0-9a-z]*|\{[&:#*@~%_\-=?!+;/.0-9a-z]*\})\})+'
+"endfunction
 function! oumg#match_http_addr()
 
 	" REF: 匹配相关的注释见: test/unit_test.vim
