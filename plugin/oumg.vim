@@ -257,6 +257,22 @@ function! oumg#match_http_addr()
 	return matched_str 
 endfunction
 
+function! oumg#match_file_path()
+	let cur_WORD = expand('<cWORD>')
+
+	" ignore txt file (return ""), since it's also a oumg_addr
+	if match(cur_WORD, '\.\(c\|js\|sh\|py\|cpp\|txt\|log\|vim\|java\|vimrc\)$') > 0
+		return ""
+	end
+	
+	" check if file exist
+	if filereadable(expand(cur_WORD))
+		return cur_WORD 
+	else
+		return ""
+	endif
+endfunction
+
 function! oumg#match_oumg_addr()
 	let cur_WORD = expand('<cWORD>')
 
@@ -303,10 +319,11 @@ function! oumg#mg()
 	
 	" Find target addresses
 	let matched_http_addr = oumg#match_http_addr()
+	let matched_file_path = oumg#match_file_path()
 	let matched_oumg_addr = oumg#match_oumg_addr()
 
 	" Open as http url if <cword> is NOT a oumg link, and it is a http url
-	if(match(matched_oumg_addr, '[~@]') < 0 && !empty(matched_http_addr))	
+	if(!empty(matched_http_addr) && match(matched_oumg_addr, '[~@]') < 0)	
 
 		" cmd 'open' on osx, actually used for open files, NOT url. So directly use browser could avoid some encoding and special char problems
 		"let open_cmd = "open"
@@ -321,12 +338,20 @@ function! oumg#mg()
 		" should NO comment on exec line
 		silent exec "!".open_cmd." ".shellescape(matched_http_addr, 1)
 
+	" Open as file path
+	elseif(!empty(matched_file_path))	
+		try 
+			call system('open ' . matched_file_path)
+		catch /.*/ 
+			echo "Get Exception in oumg#mg (open as file path): " v:exception 
+		endtry 
+	
 	" Open as oumg addr
 	else								
 		try 
 			call oumg#jump_file_title("silent edit", matched_oumg_addr)
 		catch /.*/ 
-			echo "Get Exception in oumg#mg: " v:exception 
+			echo "Get Exception in oumg#mg (open as file_title): " v:exception 
 		endtry 
 	endif
 endfunction
