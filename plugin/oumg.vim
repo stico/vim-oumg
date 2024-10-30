@@ -67,10 +67,10 @@
 "Material Loc	<sub folder>
 
 " START: script starts here
-if exists("g:loaded_vim_oumg") || &cp || v:version < 700
-	finish
-endif
-let g:loaded_vim_oumg = 1
+"if exists("g:oumg_plugin_loaded") || &cp || v:version < 700
+"	finish
+"endif
+let g:oumg_plugin_loaded = 1
 let g:oumg_temp_iskeyword_value=&iskeyword
 
 " RETURN: readable file or empty string
@@ -257,20 +257,22 @@ function! oumg#match_http_addr()
 	return matched_str 
 endfunction
 
-function! oumg#match_file_path()
-	let cur_WORD = expand('<cWORD>')
 
-	" ignore txt file (return ""), since it's also a oumg_addr
-	if match(cur_WORD, '\.\(c\|js\|sh\|py\|cpp\|txt\|log\|vim\|java\|vimrc\)$') > 0
-		return ""
-	end
-	
-	" check if file exist
-	if filereadable(expand(cur_WORD))
-		return cur_WORD 
-	else
+function! oumg#match_binary_file()
+	let cur_WORD = expand('<cWORD>')
+	let cur_path = expand(cur_WORD)
+
+	" check if file exist 
+	if (!filereadable(cur_path))
 		return ""
 	endif
+
+	" check is text file (text file NOT need call system 'open' cmd)
+	if (system('file --mime --brief ' . cur_path) =~# '^text/')
+		return ""
+	endif
+
+	return cur_WORD 
 endfunction
 
 function! oumg#match_oumg_addr()
@@ -319,11 +321,11 @@ function! oumg#mg()
 	
 	" Find target addresses
 	let matched_http_addr = oumg#match_http_addr()
-	let matched_file_path = oumg#match_file_path()
 	let matched_oumg_addr = oumg#match_oumg_addr()
+	let matched_binary_file = oumg#match_binary_file()
 
 	" Open as http url if <cword> is NOT a oumg link, and it is a http url
-	if(!empty(matched_http_addr) && match(matched_oumg_addr, '[~@]') < 0)	
+	if (!empty(matched_http_addr) && match(matched_oumg_addr, '[~@]') < 0)	
 
 		" cmd 'open' on osx, actually used for open files, NOT url. So directly use browser could avoid some encoding and special char problems
 		"let open_cmd = "open"
@@ -337,23 +339,25 @@ function! oumg#mg()
 
 		" should NO comment on exec line
 		silent exec "!".open_cmd." ".shellescape(matched_http_addr, 1)
+		return
+	endif
 
-	" Open as file path
-	elseif(!empty(matched_file_path))	
+	" Open as non-text file, which need call system 'open'
+	if(!empty(matched_binary_file))	
 		try 
-			call system('open ' . matched_file_path)
+			call system('open ' . matched_binary_file)
 		catch /.*/ 
 			echo "Get Exception in oumg#mg (open as file path): " v:exception 
 		endtry 
+		return
+	endif
 	
 	" Open as oumg addr
-	else								
-		try 
-			call oumg#jump_file_title("silent edit", matched_oumg_addr)
-		catch /.*/ 
-			echo "Get Exception in oumg#mg (open as file_title): " v:exception 
-		endtry 
-	endif
+	try 
+		call oumg#jump_file_title("silent edit", matched_oumg_addr)
+	catch /.*/ 
+		echo "Get Exception in oumg#mg (open as file_title): " v:exception 
+	endtry 
 endfunction
 
 function! oumg#jump_file_title(cmd, file_title_str)
