@@ -67,9 +67,9 @@
 "Material Loc	<sub folder>
 
 " START: script starts here
-"if exists("g:oumg_plugin_loaded") || &cp || v:version < 700
-"	finish
-"endif
+if exists("g:oumg_plugin_loaded") || &cp || v:version < 700
+	finish
+endif
 let g:oumg_plugin_loaded = 1
 let g:oumg_temp_iskeyword_value=&iskeyword
 
@@ -86,6 +86,7 @@ function! oumg#find_file(str)
 	
 	" perform tag check against 1st arg
 	let base_candidate = oumg#parse_tag(path_list[0])
+	call oumg#echo_debug_info("value after parse_tag: " . base_candidate)
 
 	" shortcut: single item and is a file, use expand as need support env var
 	if(len(path_list) == 1 && filereadable(expand(base_candidate)))
@@ -111,11 +112,11 @@ function! oumg#find_file(str)
 		let path_glob = path_glob . '/*' . item . '*'
 	endfor
 
-	" just use the 1st readable file, seems already ignorecase
+	" try best effort (1st suitable file, seems already ignorecase)
 	let file_candidate_list = globpath(base, path_glob, 0, 1)	" 0 means NOT apply 'suffixes' and 'wildignore', 1 means return as list
 	call sort(file_candidate_list, "Oumg_str_len_cmp")
 	for file_candidate in file_candidate_list
-		if filereadable(file_candidate)
+		if (filereadable(file_candidate) && oumg#is_vim_editable(file_candidate))
 			return file_candidate
 		endif
 	endfor
@@ -124,8 +125,26 @@ function! oumg#find_file(str)
 	return ""
 endfunction
 
+function! oumg#is_vim_editable(file_path)
+	let f_mime_type = system('file --mime --brief ' . a:file_path)
+	call oumg#echo_debug_info("file mime type: " . f_mime_type)
+
+	if match(f_mime_type, '^\(text/\|application/zip;\)') >= 0
+		return v:true
+	endif
+	return v:false
+endfunction
+
 function! Oumg_str_len_cmp(str1, str2)
 	return strlen(a:str1) - strlen(a:str2)
+endfunction
+
+function! oumg#echo_debug_info(str)
+	let tmp = substitute(expand('<sfile>'), '\.\.oumg#echo_debug_info', '', '')
+	let caller_name = substitute(tmp, '^.*\.\.', '', '')
+	if exists("g:oumg_plugin_debug")
+		echo caller_name . ": " . a:str
+	endif
 endfunction
 
 " RETURN: translated tag (file or dir), or itself
@@ -142,7 +161,7 @@ function! oumg#parse_tag(str)
 			if(filereadable(path_candidate) || isdirectory(path_candidate))
 				return path_candidate
 			else
-				echo 'ERROR: path candidate (=' . path_candidate . ') found, but FAILED to translate!'
+				echo 'ERROR: tag path (=' . path_candidate . ') found, but FILE NOT EXIST!'
 			endif
 		endfor
 	endfor	
@@ -257,22 +276,29 @@ function! oumg#match_http_addr()
 	return matched_str 
 endfunction
 
-
-function! oumg#match_binary_file()
+function! oumg#match_file_path()
 	let cur_WORD = expand('<cWORD>')
+	call oumg#echo_debug_info("get cWORD: " . cur_WORD)
 	let cur_path = expand(cur_WORD)
+	call oumg#echo_debug_info("expand to path: " . cur_path)
 
-	" check if file exist 
-	if (!filereadable(cur_path))
-		return ""
+	" check is readable
+	if !filereadable(cur_path)
+		if isdirectory(cur_path)
+			echo "vim-oumg warn: it is a directory!"
+		endif
+
+		call oumg#echo_debug_info("file un-readable, skip")
+		return {}
+	end
+
+	if oumg#is_vim_editable(cur_path)
+		call oumg#echo_debug_info("text or text-zip file, skip")
+		return { "text_file" : cur_path }
 	endif
 
-	" check is text file (text file NOT need call system 'open' cmd)
-	if (system('file --mime --brief ' . cur_path) =~# '^text/')
-		return ""
-	endif
-
-	return cur_WORD 
+	call oumg#echo_debug_info("it is binary file, return: " . cur_path)
+	return { "binary_file" : cur_path }
 endfunction
 
 function! oumg#match_oumg_addr()
@@ -322,14 +348,14 @@ function! oumg#mg()
 	" Find target addresses
 	let matched_http_addr = oumg#match_http_addr()
 	let matched_oumg_addr = oumg#match_oumg_addr()
-	let matched_binary_file = oumg#match_binary_file()
+	let matched_file_path = oumg#match_file_path()
 
 	" Open as http url if <cword> is NOT a oumg link, and it is a http url
 	if (!empty(matched_http_addr) && match(matched_oumg_addr, '[~@]') < 0)	
 
-		" cmd 'open' on osx, actually used for open files, NOT url. So directly use browser could avoid some encoding and special char problems
-		"let open_cmd = "open"
+		" 'open' might cause encoding and special char problems
 		let open_cmd = "/Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome"
+		call oumg#echo_debug_info("open as http url: " . matched_http_addr)
 
 		"silent exec "!".open_cmd." ".shellescape(matched_http_addr)		" NOT work for url with # (will be removed by sheel), { (will be encoded), % (will replace with filename)
 		"silent exec "!".open_cmd." ".matched_http_addr				" NOT work for url with # (will be removed by shell), { (will be encoded), % (will replace with filename)
@@ -343,21 +369,24 @@ function! oumg#mg()
 	endif
 
 	" Open as non-text file, which need call system 'open'
-	if(!empty(matched_binary_file))	
-		try 
-			call system('open ' . matched_binary_file)
-		catch /.*/ 
-			echo "Get Exception in oumg#mg (open as file path): " v:exception 
-		endtry 
+	"let matched_binary_file = has_key(matched_file_path, "binary_file") ? matched_file_path["binary_file"] : ""
+	let matched_binary_file = get(matched_file_path, "binary_file", "")
+	if( !empty(matched_binary_file ) )	
+		call oumg#echo_debug_info("open as binary file: " . matched_binary_file)
+		call system('open ' . matched_binary_file)
 		return
 	endif
 	
+	"let matched_text_file = has_key(matched_file_path, "text_file") ? matched_file_path["text_file"] : ""
+	let matched_text_file = get(matched_file_path, "text_file", "")
+	if(!empty(matched_text_file))	
+		call oumg#echo_debug_info("open as text or text-zip file: " . matched_text_file)
+		execute "silent edit " . matched_text_file
+		return
+	endif
+
 	" Open as oumg addr
-	try 
-		call oumg#jump_file_title("silent edit", matched_oumg_addr)
-	catch /.*/ 
-		echo "Get Exception in oumg#mg (open as file_title): " v:exception 
-	endtry 
+	call oumg#jump_file_title("silent edit", matched_oumg_addr)
 endfunction
 
 function! oumg#jump_file_title(cmd, file_title_str)
