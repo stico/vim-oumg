@@ -369,7 +369,6 @@ function! oumg#mg()
 	endif
 
 	" Open as non-text file, which need call system 'open'
-	"let matched_binary_file = has_key(matched_file_path, "binary_file") ? matched_file_path["binary_file"] : ""
 	let matched_binary_file = get(matched_file_path, "binary_file", "")
 	if( !empty(matched_binary_file ) )	
 		call oumg#echo_debug_info("open as binary file: " . matched_binary_file)
@@ -377,7 +376,6 @@ function! oumg#mg()
 		return
 	endif
 	
-	"let matched_text_file = has_key(matched_file_path, "text_file") ? matched_file_path["text_file"] : ""
 	let matched_text_file = get(matched_file_path, "text_file", "")
 	if(!empty(matched_text_file))	
 		call oumg#echo_debug_info("open as text or text-zip file: " . matched_text_file)
