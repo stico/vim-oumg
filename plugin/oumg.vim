@@ -140,11 +140,13 @@ function! Oumg_str_len_cmp(str1, str2)
 endfunction
 
 function! oumg#echo_debug_info(str)
+	if (!exists("g:oumg_plugin_debug"))
+		return
+	endif
+
 	let tmp = substitute(expand('<sfile>'), '\.\.oumg#echo_debug_info', '', '')
 	let caller_name = substitute(tmp, '^.*\.\.', '', '')
-	if exists("g:oumg_plugin_debug")
-		echo caller_name . ": " . a:str
-	endif
+	echo caller_name . ": " . a:str
 endfunction
 
 " RETURN: translated tag (file or dir), or itself
