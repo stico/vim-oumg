@@ -284,12 +284,14 @@ function! oumg#match_file_path()
 	let cur_path = expand(cur_WORD)
 	call oumg#echo_debug_info("expand to path: " . cur_path)
 
+	" check is dir (should before "filereadable()", since it thinks dir is un-readable
+	if isdirectory(cur_path)
+		call oumg#echo_debug_info("it is a directory")
+		return { "directory" : cur_path }
+	endif
+
 	" check is readable
 	if !filereadable(cur_path)
-		if isdirectory(cur_path)
-			echo "vim-oumg warn: it is a directory!"
-		endif
-
 		call oumg#echo_debug_info("file un-readable, skip")
 		return {}
 	end
@@ -370,9 +372,17 @@ function! oumg#mg()
 		return
 	endif
 
+	" Open as 
+	let matched_directory = get(matched_file_path, "directory", "")
+	if( !empty(matched_directory) )
+		call oumg#echo_debug_info("open as : " . matched_directory)
+		call system('open ' . matched_directory)
+		return
+	endif
+
 	" Open as non-text file, which need call system 'open'
 	let matched_binary_file = get(matched_file_path, "binary_file", "")
-	if( !empty(matched_binary_file ) )	
+	if( !empty(matched_binary_file ) )
 		call oumg#echo_debug_info("open as binary file: " . matched_binary_file)
 		call system('open ' . matched_binary_file)
 		return
