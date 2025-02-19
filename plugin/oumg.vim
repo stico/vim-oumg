@@ -129,7 +129,8 @@ function! oumg#is_vim_editable(file_path)
 	let f_mime_type = system('file --mime --brief ' . a:file_path)
 	call oumg#echo_debug_info("file mime type: " . f_mime_type)
 
-	if match(f_mime_type, '^\(text/\|application/zip;\)') >= 0
+	if (	match(f_mime_type, '^\(text/\)') >= 0 ||
+	\	match(f_mime_type, '^application/\(zip\|csv\|tsv\)') >= 0 )
 		return v:true
 	endif
 	return v:false
