@@ -477,6 +477,8 @@ function! oumg#mo_common(level)
 	let file = expand('%')
 	let pattern = oumg#outline_pattern(a:level)
 
+	call oumg#echo_debug_info("parse as common/text file")
+
 	while search(pattern, flags) > 0
 		let flags = 'W'
 		let title = substitute(getline('.'), '[[:space:]]*$', '', '')		" remove trailing spaces, since need replace space to '.' below
@@ -498,6 +500,8 @@ function! oumg#mo_python()
 	let lwidth = 25
 	let file = expand('%')
 	let pattern = '^[[:blank:]]*\(def \|class \|@\)'
+
+	call oumg#echo_debug_info("parse as python file")
 
 	while search(pattern, flags) > 0
 		let flags = 'W'
@@ -535,6 +539,8 @@ function! oumg#mo_sh()
 	let flags = 'cW'
 	let lwidth = 25
 	let file = expand('%')
+
+	call oumg#echo_debug_info("parse as shell file")
 
 	" matchs: function, #*80#comment#*80,
 	let pattern = '^#\{80\}\n#.*\n#\{80\}$\|^[[:alnum:]_]*[[:blank:]]*()[[:blank:]]*{.*$\|^function[[:blank:]].*$'
@@ -593,8 +599,14 @@ function! oumg#mo(count)
 
 	" hide filename and line number in quickfix window, not sure how it works yet.
 	set conceallevel=2 concealcursor=nc
-	syntax match qfFileName /^.*| / transparent conceal
-	"syntax match qfFileName /^[^|]*/ transparent conceal
+
+	" v1: works in old version (8.x)
+	"syntax match qfFileName /^.*| / transparent conceal
+	
+	" v2: works. NOTE: 'qfFileName' is copy from web, seems use other name also works
+	"syntax match fnameLine /^[^ ]* / conceal	" also works
+	syntax match qfFileName /^[^ ]* / conceal
+	
 endfunction
 
 function! oumg#buffer_list_str()
