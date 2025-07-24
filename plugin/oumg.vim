@@ -567,7 +567,7 @@ endfunction
 
 function! oumg#mo(count)
 	" safty check: to avoid long pause
-	if line('$') >= 8000
+	if line('$') >= 20000
 		echo "WARN: too much line to handle, give up!"
 		return
 	endif
