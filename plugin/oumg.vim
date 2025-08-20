@@ -281,9 +281,10 @@ endfunction
 
 function! oumg#match_file_path()
 	let cur_WORD = expand('<cWORD>')
-	call oumg#echo_debug_info("get cWORD: " . cur_WORD)
+	"call oumg#echo_debug_info("get cWORD: " . cur_WORD)
+
 	let cur_path = expand(cur_WORD)
-	call oumg#echo_debug_info("expand to path: " . cur_path)
+	"call oumg#echo_debug_info("expand to path: " . cur_path)
 
 	" check is dir (should before "filereadable()", since it thinks dir is un-readable
 	if isdirectory(cur_path)
@@ -293,7 +294,7 @@ function! oumg#match_file_path()
 
 	" check is readable
 	if !filereadable(cur_path)
-		call oumg#echo_debug_info("file un-readable, skip")
+		"call oumg#echo_debug_info("file un-readable, skip")
 		return {}
 	end
 
